@@ -1,0 +1,283 @@
+<mxfile host="app.diagrams.net" modified="2026-04-25T00:00:00.000Z" agent="ChatGPT" version="24.7.17" type="device">
+  <diagram name="离线工具优化业务逻辑 v1" id="offline-tool-optimized-v1">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1220" pageHeight="2060" math="0" shadow="0">
+      <root>
+      <mxCell id="0" />
+      <mxCell id="1" parent="0" />
+      <mxCell id="L1" value="A. 公共入口 / Common Entry" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="20" y="20" width="1180" height="150" as="geometry" />
+      </mxCell>
+      <mxCell id="L2" value="B. 下载端：目标环境选择与依赖闭环 / Download Side" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="20" y="200" width="1180" height="620" as="geometry" />
+      </mxCell>
+      <mxCell id="L3" value="C. 打包验证 / Package Verification" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="20" y="850" width="1180" height="360" as="geometry" />
+      </mxCell>
+      <mxCell id="L4" value="D. 离线端安装 / Offline Installation" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="20" y="1240" width="1180" height="520" as="geometry" />
+      </mxCell>
+      <mxCell id="L5" value="E. 异常处理与审计 / Error Handling &amp; Audit" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="20" y="1790" width="1180" height="250" as="geometry" />
+      </mxCell>
+      <mxCell id="n_start" value="开始<br>Start" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="60" y="70" width="120" height="60" as="geometry" />
+      </mxCell>
+      <mxCell id="n_lang" value="选择语言<br>中文 / English" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="230" y="65" width="170" height="70" as="geometry" />
+      </mxCell>
+      <mxCell id="n_main" value="主菜单<br>1 下载模式<br>2 安装模式<br>3 帮助<br>0 退出" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="455" y="55" width="220" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="n_help" value="帮助 / SOP / 版本信息" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="740" y="65" width="190" height="70" as="geometry" />
+      </mxCell>
+      <mxCell id="n_exit" value="退出" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="990" y="70" width="120" height="60" as="geometry" />
+      </mxCell>
+      <mxCell id="d_detect" value="检测下载机环境<br>OS / ARCH / 工具依赖 / 网络" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="60" y="250" width="220" height="80" as="geometry" />
+      </mxCell>
+      <mxCell id="d_target" value="选择目标环境<br>OS / 版本 / SP / 架构 / 包类型" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="330" y="245" width="240" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="d_repo" value="加载目标仓库配置<br>支持多源重试 / 镜像优先级" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="630" y="250" width="240" height="80" as="geometry" />
+      </mxCell>
+      <mxCell id="d_repo_check" value="校验仓库元数据<br>repodata / Packages.gz / 架构目录 / GPG" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="930" y="240" width="230" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="d_select" value="选择下载对象<br>单包 / 自定义包组 / 原生包组" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+        <mxGeometry x="60" y="390" width="240" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="d_group" value="包组解析<br>RPM group/comps/module<br>DEB meta/task/recommends" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="350" y="385" width="250" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="d_resolve" value="完整依赖解析<br>空白 installroot 或空白 dpkg status<br>避免漏掉下载机已安装依赖" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="660" y="375" width="260" height="120" as="geometry" />
+      </mxCell>
+      <mxCell id="d_closure" value="生成依赖闭环清单<br>resolved_packages.lock" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="970" y="390" width="190" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="d_missing" value="依赖是否全部可下载？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="750" y="545" width="170" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="d_download" value="下载全部包<br>含 Depends / Pre-Depends / weak deps / recommends 策略" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="420" y="560" width="260" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="d_space" value="检测工作目录空间<br>WORKDIR / output / cache<br>不默认扩容 /tmp" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="80" y="555" width="250" height="110" as="geometry" />
+      </mxCell>
+      <mxCell id="d_fail_dep" value="依赖缺失<br>输出缺失包、源、架构、版本" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="970" y="570" width="190" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="p_repo" value="生成本地仓库元数据<br>RPM: createrepo_c<br>DEB: dpkg-scanpackages / apt-ftparchive" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="80" y="900" width="290" height="110" as="geometry" />
+      </mxCell>
+      <mxCell id="p_dryrun" value="本地仓库 dry-run 验证<br>仅启用 local-offline repo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="430" y="900" width="260" height="110" as="geometry" />
+      </mxCell>
+      <mxCell id="p_ok" value="验证是否通过？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="750" y="900" width="170" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="p_manifest" value="生成 manifest.json<br>OS / ARCH / repo / packages / policy" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="80" y="1060" width="270" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="p_checksum" value="生成 checksum.sha256<br>包文件 + 元数据 + 脚本" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="430" y="1070" width="240" height="80" as="geometry" />
+      </mxCell>
+      <mxCell id="p_pack" value="重新打包 / 增量打包<br>增量必须校验 manifest 一致性" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="720" y="1060" width="260" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="p_done" value="输出离线包<br>迁移说明 / 安装命令 / 日志" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="1010" y="1070" width="160" height="80" as="geometry" />
+      </mxCell>
+      <mxCell id="p_fail" value="验证失败<br>禁止打包，输出修复建议" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="980" y="900" width="190" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="i_scan" value="离线服务器扫描 output<br>读取 manifest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="60" y="1290" width="220" height="80" as="geometry" />
+      </mxCell>
+      <mxCell id="i_detect" value="检测当前离线环境<br>OS / VERSION / ARCH / PKG_TYPE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="330" y="1285" width="240" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="i_compat" value="兼容性校验<br>完全匹配 / 兼容警告 / 禁止安装" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="630" y="1280" width="230" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="i_verify" value="校验完整性<br>SHA256 / GPG / repo metadata" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="930" y="1285" width="230" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="i_repo" value="创建本地 repo<br>DNF/YUM/APT 仅启用离线源" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="60" y="1445" width="250" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="i_dryrun" value="安装前 dry-run<br>检查冲突 / 降级 / 替换 / 缺依赖" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="360" y="1435" width="260" height="110" as="geometry" />
+      </mxCell>
+      <mxCell id="i_confirm" value="用户确认正式安装？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="690" y="1440" width="180" height="100" as="geometry" />
+      </mxCell>
+      <mxCell id="i_install" value="正式安装<br>包管理器处理依赖顺序" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="920" y="1450" width="220" height="80" as="geometry" />
+      </mxCell>
+      <mxCell id="i_result" value="执行验证命令<br>输出成功/失败/版本/日志" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="360" y="1600" width="260" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="i_block" value="不兼容或校验失败<br>禁止安装并给出原因" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="930" y="1600" width="220" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="e_log" value="统一日志<br>logs/YYYYMMDD.log<br>含命令、返回码、耗时" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="60" y="1845" width="250" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="e_errors" value="异常分类<br>网络 / 源404 / 空间不足 / 架构不符 / 依赖缺失 / 签名失败" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="360" y="1830" width="330" height="120" as="geometry" />
+      </mxCell>
+      <mxCell id="e_audit" value="审计输出<br>manifest + resolved lock + checksum + 安装报告" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="760" y="1845" width="280" height="90" as="geometry" />
+      </mxCell>
+      <mxCell id="e_rollback" value="失败处理<br>保留现场 / 不清理日志 / 提示回滚或恢复源配置" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+        <mxGeometry x="1080" y="1825" width="90" height="130" as="geometry" />
+      </mxCell>
+      <mxCell id="e1" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="n_start" target="n_lang">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e2" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="n_lang" target="n_main">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e3" value="下载模式" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="n_main" target="d_detect">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e4" value="安装模式" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="n_main" target="i_scan">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e5" value="帮助" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="n_main" target="n_help">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e6" value="退出" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="n_main" target="n_exit">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e7" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_detect" target="d_target">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e8" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_target" target="d_repo">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e9" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_repo" target="d_repo_check">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e10" value="通过" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_repo_check" target="d_select">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e11" value="失败" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_repo_check" target="e_errors">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e12" value="包组" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_select" target="d_group">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e13" value="单包" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_select" target="d_resolve">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e14" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_group" target="d_resolve">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e15" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_resolve" target="d_closure">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e16" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_closure" target="d_missing">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e17" value="是" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_missing" target="d_download">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e18" value="否" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_missing" target="d_fail_dep">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e19" value="空间足够" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_space" target="d_download">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e20" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_download" target="p_repo">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e21" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_fail_dep" target="e_errors">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e22" value="空间不足" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="d_space" target="e_errors">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e23" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_repo" target="p_dryrun">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e24" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_dryrun" target="p_ok">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e25" value="通过" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_ok" target="p_manifest">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e26" value="失败" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_ok" target="p_fail">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e27" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_manifest" target="p_checksum">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e28" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_checksum" target="p_pack">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e29" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_pack" target="p_done">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e30" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_fail" target="e_errors">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e31" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_scan" target="i_detect">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e32" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_detect" target="i_compat">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e33" value="允许" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_compat" target="i_verify">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e34" value="禁止" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_compat" target="i_block">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e35" value="通过" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_verify" target="i_repo">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e36" value="失败" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_verify" target="i_block">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e37" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_repo" target="i_dryrun">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e38" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_dryrun" target="i_confirm">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e39" value="确认" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_confirm" target="i_install">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e40" value="取消/风险" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_confirm" target="i_block">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e41" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_install" target="i_result">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e42" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_block" target="e_errors">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e43" value="记录" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="p_done" target="e_log">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e44" value="记录" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="i_result" target="e_log">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e45" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="e_log" target="e_audit">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e46" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="e_errors" target="e_audit">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      <mxCell id="e47" value="失败场景" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;fontSize=11;" edge="1" parent="1" source="e_audit" target="e_rollback">
+        <mxGeometry relative="1" as="geometry" />
+      </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

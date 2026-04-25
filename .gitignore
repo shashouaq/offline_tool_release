@@ -1,0 +1,25 @@
+# Runtime artifacts
+logs/
+output/
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Shell / generated state
+*.pid
+*.out

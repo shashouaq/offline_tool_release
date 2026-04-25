@@ -1,0 +1,108 @@
+# Test Findings
+
+Use this file to collect each test round in one place.
+
+## Round Template
+
+### Round: <id or date>
+- Environment:
+  - OS:
+  - Arch:
+  - Online/Offline:
+- Build/Script version:
+- Test scope:
+- Result summary:
+  - Passed:
+  - Failed:
+- Failures:
+  1. Symptom:
+  2. Repro steps:
+  3. Expected:
+  4. Actual:
+  5. Root cause:
+  6. Fix:
+  7. Re-test result:
+- Logs:
+  - Path:
+  - Key lines:
+
+### Round: round-20260424-A
+- Environment:
+  - OS: mixed
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh
+- Test scope: auto summary from logs
+- Result summary:
+  - logs_20260424.log: menu_hits=0, select_ok=0, err_hits=0
+  - openeulerlogs_20260423.log: menu_hits=0, select_ok=1, err_hits=477
+  - ubuntulogs_20260423.log: menu_hits=0, select_ok=2, err_hits=287
+  - Passed: 1
+  - Failed: 2
+- Failures:
+  1. Symptom: see per-log err_hits > 0
+  2. Repro steps: run with same script and menu inputs
+  3. Expected: menu visible and flow continues
+  4. Actual: determined by log metrics above
+  5. Root cause: pending manual confirmation for each failed log
+  6. Fix: align menu rendering + input handling + logging
+  7. Re-test result: pending
+- Logs:
+  - Path: logs/logs_20260424.log
+  - Key lines: pending manual extract
+  - Path: logs/openeulerlogs_20260423.log
+  - Key lines: repeated invalid_input entries
+  - Path: logs/ubuntulogs_20260423.log
+  - Key lines: repeated invalid_input entries
+
+### Round: session-019db7ca-baseline-merge
+- Environment:
+  - OS: Windows host + WSL Bash for syntax/tests; Linux remote planned for full run
+  - Arch: mixed (target-dependent)
+  - Online/Offline: mixed topology required
+- Build/Script version: offline_tools_v14.sh (session baseline)
+- Test scope: baseline merge from historical session into current thread
+- Result summary:
+  - Passed: baseline requirements extracted and merged into docs
+  - Failed: none at merge step
+- Failures:
+  1. Symptom: historical records contain mojibake in parts of text
+  2. Repro steps: parse old session JSONL directly in Windows PowerShell
+  3. Expected: fully readable Chinese text in all payloads
+  4. Actual: partial garbled text in legacy entries
+  5. Root cause: mixed encoding/locale rendering in old records
+  6. Fix: merge by durable technical facts + memory summary references
+  7. Re-test result: merge completed
+- Logs:
+  - Path: C:\Users\wei.qiao\.codex\sessions\2026\04\23\rollout-2026-04-23T08-43-20-019db7ca-9731-7e43-b07a-3048ce515631.jsonl
+  - Key lines:
+    - session_meta.id = 019db7ca-9731-7e43-b07a-3048ce515631
+    - user objective = offline RPM/DEB workflow hardening and optimization
+
+### Round: round-20260425-autonomous-validation
+- Environment:
+  - OS: 4 hosts (RPM online, DEB online, RPM offline, DEB offline)
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + utils/run_autonomous_validation.sh
+- Test scope: local quality gate + remote sync + menu regression/autonomous validation
+- Result summary:
+  - rpm_online(172.18.10.61): PASS, menu_hits=5
+  - deb_online(172.18.10.62): PASS, menu_hits=5
+  - rpm_offline(172.18.10.64): PASS, menu_hits=0, menu regression skipped because `expect` missing on offline host
+  - deb_offline(172.18.10.65): PASS, menu_hits=0, menu regression skipped because `expect` missing on offline host
+- Failures:
+  1. Symptom: autonomous validation previously stalled on offline hosts
+  2. Repro steps: run old `utils/run_autonomous_validation.sh`
+  3. Expected: offline hosts must not attempt online dependency bootstrap
+  4. Actual: old script tried to install `expect` over the network on offline hosts
+  5. Root cause: script did not distinguish online/offline host roles
+  6. Fix: classify hosts by connectivity, skip package bootstrap on offline hosts, and mark menu regression as skipped when `expect` is unavailable
+  7. Re-test result: fixed; script completed across all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_112317.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS with skip
+    - deb_offline PASS with skip

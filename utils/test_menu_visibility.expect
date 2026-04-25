@@ -1,0 +1,62 @@
+#!/usr/bin/expect -f
+set timeout 30
+
+set root [lindex $argv 0]
+if {$root eq ""} {
+  puts "usage: test_menu_visibility.expect <project-root>"
+  exit 2
+}
+
+set script "$root/offline_tools_v14.sh"
+set out_file "$root/logs/menu_visibility_expect.out"
+
+file mkdir "$root/logs"
+log_file -noappend $out_file
+
+spawn bash $script
+
+expect {
+  -re {Select Language|选择语言} {}
+  timeout { puts "FAIL: language menu not shown"; exit 1 }
+}
+send "1\r"
+
+expect {
+  -re {Download Mode|下载模式|Install Mode|安装模式} {}
+  timeout { puts "FAIL: main menu not shown"; exit 1 }
+}
+send "1\r"
+
+expect {
+  -re {RPM Systems|DEB Systems|RPM 系统|DEB 系统} {}
+  timeout { puts "FAIL: os selection menu not shown"; exit 1 }
+}
+send "\r"
+
+expect {
+  -re {Target Architecture|目标架构} {}
+  timeout { puts "FAIL: arch menu not shown"; exit 1 }
+}
+send "\r"
+
+expect {
+  -re {Skip SSL|SSL|是否跳过 SSL 证书校验} {}
+  timeout { puts "FAIL: ssl menu not shown"; exit 1 }
+}
+send "\r"
+
+expect {
+  -re {Environment self-check|环境自检} {}
+  timeout { puts "FAIL: dependency menu section not shown"; exit 1 }
+}
+
+expect {
+  -re {Select \[1/0\]|请选择 \[1/0\]|Select \[1/2/0\]|请选择 \[1/2/0\]} {}
+  timeout { puts "FAIL: dependency choice menu not shown"; exit 1 }
+}
+
+send "0\r"
+expect eof
+
+puts "PASS: menu visibility regression"
+exit 0

@@ -1,0 +1,19 @@
+repos:
+  - repo: local
+    hooks:
+      - id: bash-syntax
+        name: bash syntax check
+        entry: bash -lc 'find . -type f -name "*.sh" -print0 | xargs -0 bash -n'
+        language: system
+        pass_filenames: false
+      - id: lf-check
+        name: shell LF check
+        entry: bash utils/check_lf.sh
+        language: system
+        pass_filenames: false
+      - id: quality-gate
+        name: quality gate
+        entry: bash utils/quality_gate.sh
+        language: system
+        pass_filenames: false
+
