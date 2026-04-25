@@ -109,17 +109,17 @@ add_tool_selection(){
     support=$(get_tool_support_status_for_os "$tool_id" "$TARGET_OS" "$TARGET_ARCH")
     if [[ "$support" == "UNSUPPORTED" ]]; then
         suggestion=$(get_tool_support_suggestion_for_os "$tool_id" "$TARGET_OS" "$TARGET_ARCH")
-        print_warning "$(lang_pick "[CN] Tool not supported on current target: $tool_id" "Tool not supported on current target: $tool_id")"
+        print_warning "$(lang_pick "当前目标系统不支持该工具: $tool_id" "Tool not supported on current target: $tool_id")"
         [[ -n "$suggestion" ]] && print_info "$suggestion"
         return 0
     fi
 
     existing_key="${tool_id,,}"
     if [[ -n "${EXISTING_TOOL_SET[$existing_key]+x}" ]]; then
-        print_warning "$(lang_pick "[CN] Tool already exists in offline package: $tool_id" "Tool already exists in offline package: $tool_id")"
+        print_warning "$(lang_pick "离线包中已存在该工具: $tool_id" "Tool already exists in offline package: $tool_id")"
         if [[ -n "${EXISTING_PACKAGE_PATH:-}" ]]; then
-            echo "  $EXISTING_PACKAGE_PATH"
-            echo "  rm -f \"$EXISTING_PACKAGE_PATH\" \"$EXISTING_PACKAGE_PATH.sha256\""
+            echo "  $(lang_pick "当前路径" "Current path"): $EXISTING_PACKAGE_PATH"
+            echo "  $(lang_pick "如需重新下载，请先删除" "Delete before re-downloading"): rm -f \"$EXISTING_PACKAGE_PATH\" \"$EXISTING_PACKAGE_PATH.sha256\""
         fi
         return 0
     fi
@@ -142,17 +142,17 @@ toggle_tool_selection_by_id(){
     support=$(get_tool_support_status_for_os "$tool_id" "$TARGET_OS" "$TARGET_ARCH")
     if [[ "$support" == "UNSUPPORTED" ]]; then
         suggestion=$(get_tool_support_suggestion_for_os "$tool_id" "$TARGET_OS" "$TARGET_ARCH")
-        print_warning "$(lang_pick "[CN] Tool not supported on current target: $tool_id" "Tool not supported on current target: $tool_id")"
+        print_warning "$(lang_pick "当前目标系统不支持该工具: $tool_id" "Tool not supported on current target: $tool_id")"
         [[ -n "$suggestion" ]] && print_info "$suggestion"
         return 0
     fi
 
     existing_key="${tool_id,,}"
     if [[ -n "${EXISTING_TOOL_SET[$existing_key]+x}" ]]; then
-        print_warning "$(lang_pick "[CN] Tool already exists in offline package: $tool_id" "Tool already exists in offline package: $tool_id")"
+        print_warning "$(lang_pick "离线包中已存在该工具: $tool_id" "Tool already exists in offline package: $tool_id")"
         if [[ -n "${EXISTING_PACKAGE_PATH:-}" ]]; then
-            echo "  $EXISTING_PACKAGE_PATH"
-            echo "  rm -f \"$EXISTING_PACKAGE_PATH\" \"$EXISTING_PACKAGE_PATH.sha256\""
+            echo "  $(lang_pick "当前路径" "Current path"): $EXISTING_PACKAGE_PATH"
+            echo "  $(lang_pick "如需重新下载，请先删除" "Delete before re-downloading"): rm -f \"$EXISTING_PACKAGE_PATH\" \"$EXISTING_PACKAGE_PATH.sha256\""
         fi
         return 0
     fi
@@ -208,7 +208,7 @@ verify_tools_in_repo(){
     print_section "$(t TOOL_VERIFY_TITLE)"
     for tool_id in "${SELECTED_TOOLS[@]}"; do
         if [[ "$(get_tool_support_status_for_os "$tool_id" "$target_os" "$TARGET_ARCH")" == "UNSUPPORTED" ]]; then
-            echo "  $(t STATUS_ERROR) $tool_id ($(lang_pick "[CN] unsupported by rule" "unsupported by rule"))"
+            echo "  $(t STATUS_ERROR) $tool_id ($(lang_pick "规则不支持" "unsupported by rule"))"
             local s
             s=$(get_tool_support_suggestion_for_os "$tool_id" "$target_os" "$TARGET_ARCH")
             [[ -n "$s" ]] && echo "      $s"

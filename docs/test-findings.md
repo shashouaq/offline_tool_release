@@ -169,3 +169,34 @@ Use this file to collect each test round in one place.
     - deb_online PASS
     - rpm_offline PASS
     - deb_offline PASS
+
+### Round: round-20260425-config-and-mode-filter-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + refreshed config/tool selection modules
+- Test scope: config module cleanup, bilingual user-facing messages, group/package mode filter smoke, remote autonomous validation
+- Result summary:
+  - Local syntax gate: PASS
+  - Local quality gate: PASS
+  - Local mode filter smoke: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=9
+  - deb_online(172.18.10.62): PASS, menu_hits=9
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: `config.sh` still contained duplicated function paths and mojibake-heavy messages; tool selection warnings still exposed placeholder text
+  2. Repro steps: inspect `lib/config.sh` / `lib/tool_selector.sh`, then run a local mode-filter smoke on `openEuler22.03 x86_64`
+  3. Expected: readable bilingual messages and stable group/package split
+  4. Actual: legacy duplicated loader logic increased drift risk, and selection warnings still showed temporary wording
+  5. Root cause: older config cleanup had not yet normalized the module that owns repo loading, tool mapping, and mode filtering
+  6. Fix: rewrote `lib/config.sh` as a single clean implementation, kept exported function names stable, and normalized tool-selector warnings/path hints to proper bilingual text
+  7. Re-test result: `all/group/package` smoke returned `65/12/53` tools and remote autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_151703.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS

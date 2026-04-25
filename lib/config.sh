@@ -1,16 +1,11 @@
 #!/bin/bash
-# =====================================================
-# 配置管理模块 - config.sh
-# 统一管理配置文件加载、验证等功能
-# =====================================================
+# Configuration helpers: repo source loading, tool mapping, and user preferences.
 
-# 全局配置变量
 declare -a REPOS=()
 PKG_TYPE=""
 RELEASE_VER=""
-SKIP_SSL=0
+SKIP_SSL="${SKIP_SSL:-0}"
 
-# 允许模块在单独测试时运行；主程序中会使用 logger.sh 提供的 log。
 if ! declare -F log >/dev/null 2>&1; then
     log(){
         local msg="$1"
@@ -20,75 +15,92 @@ if ! declare -F log >/dev/null 2>&1; then
     }
 fi
 
-# =============================================
-# 加载操作系统仓库配置
-# =============================================
+_config_trim(){
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    echo "$value"
+}
+
+_config_error(){
+    local message_zh="$1"
+    local message_en="$2"
+    local hint_zh="$3"
+    local hint_en="$4"
+    show_error_detail \
+        "$(lang_pick "配置错误" "Configuration error")" \
+        "$(lang_pick "$message_zh" "$message_en")" \
+        "$(lang_pick "$hint_zh" "$hint_en")"
+}
+
 load_os_config(){
     local os_type="$1"
     local conf_file="$CONF_DIR/os_sources.conf"
+    local line in_section=0
 
-    [[ ! -f "$conf_file" ]] && {
-        show_error_detail "配置错误" "配置文件不存在: $conf_file" "请检查配置文件路径"
+    if [[ ! -f "$conf_file" ]]; then
+        _config_error \
+            "系统源配置文件不存在: $conf_file" \
+            "OS source config not found: $conf_file" \
+            "请检查 conf/os_sources.conf" \
+            "Check conf/os_sources.conf"
         return 1
-    }
+    fi
 
     REPOS=()
     PKG_TYPE=""
     RELEASE_VER=""
 
-    local in_section=false
     while IFS= read -r line || [[ -n "$line" ]]; do
-        # 跳过注释和空行
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${line// }" ]] && continue
+        line=$(_config_trim "$line")
+        [[ -z "$line" || "$line" == \#* ]] && continue
 
-        # 检测段开始
-        if [[ "$line" =~ ^\[([A-Za-z0-9.]+)\] ]]; then
+        if [[ "$line" =~ ^\[([A-Za-z0-9._-]+)\]$ ]]; then
             if [[ "${BASH_REMATCH[1]}" == "$os_type" ]]; then
-                in_section=true
+                in_section=1
             else
-                in_section=false
+                in_section=0
             fi
             continue
         fi
 
-        # 只处理当前段
-        $in_section || continue
+        [[ $in_section -eq 1 ]] || continue
 
-        # 解析配置项
-        if [[ "$line" =~ ^[[:space:]]*PKG_TYPE=(.+) ]]; then
-            PKG_TYPE="${BASH_REMATCH[1]// /}"
-        elif [[ "$line" =~ ^[[:space:]]*RELEASEVER=(.+) ]]; then
-            RELEASE_VER="${BASH_REMATCH[1]// /}"
+        if [[ "$line" =~ ^PKG_TYPE=(.+)$ ]]; then
+            PKG_TYPE=$(_config_trim "${BASH_REMATCH[1]}")
+        elif [[ "$line" =~ ^RELEASEVER=(.+)$ ]]; then
+            RELEASE_VER=$(_config_trim "${BASH_REMATCH[1]}")
         elif [[ "$line" =~ \"([^\"]+)\" ]]; then
             REPOS+=("${BASH_REMATCH[1]}")
         fi
     done < "$conf_file"
 
-    # 验证配置
     if [[ ${#REPOS[@]} -eq 0 ]]; then
-        show_error_detail "配置错误" "[$os_type] 未找到任何仓库配置" "请检查 os_sources.conf 文件"
+        _config_error \
+            "[$os_type] 未找到任何仓库配置" \
+            "[$os_type] no repositories configured" \
+            "请检查 os_sources.conf 中对应系统段落" \
+            "Check the matching system section in os_sources.conf"
         return 1
     fi
 
     if [[ -z "$PKG_TYPE" ]]; then
-        show_error_detail "配置错误" "[$os_type] 未设置 PKG_TYPE" "请检查 os_sources.conf 文件"
+        _config_error \
+            "[$os_type] 未设置 PKG_TYPE" \
+            "[$os_type] PKG_TYPE is missing" \
+            "请检查 os_sources.conf 中的 PKG_TYPE" \
+            "Check PKG_TYPE in os_sources.conf"
         return 1
     fi
 
-    log "[配置] [$os_type] 加载 ${#REPOS[@]} 个仓库, PKG_TYPE=$PKG_TYPE"
+    log "[config] loaded os config: os=$os_type repos=${#REPOS[@]} pkg_type=$PKG_TYPE release=$RELEASE_VER"
     return 0
 }
 
-# =============================================
-# 检测并选择最佳镜像源
-# =============================================
 check_repo_availability(){
     local url="$1"
     local timeout="${2:-5}"
-
-    curl -sk --max-time "$timeout" -I "$url" &>/dev/null
-    return $?
+    curl -sk --max-time "$timeout" -I "$url" >/dev/null 2>&1
 }
 
 filter_reachable_repos(){
@@ -113,367 +125,110 @@ filter_reachable_repos(){
 
 pick_best_repos(){
     local -a good_repos=()
+    local -A mirror_names=()
+    local repo expanded mirror_name prefix domain
+    local idx=0
 
-    log "[检测] 测试 ${#REPOS[@]} 个镜像源..."
-    
-    # 尝试从缓存加载
+    log "[repo] probing ${#REPOS[@]} configured sources"
+
     if load_mirror_cache "$TARGET_OS" "$TARGET_ARCH"; then
-        # 缓存命中，直接使用缓存的镜像源
+        log "[repo] using cached mirror availability"
         return 0
     fi
-    
-    # 加载镜像源中文名称映射
-    declare -A MIRROR_NAMES
+
     if [[ -f "$CONF_DIR/mirror_names.conf" ]]; then
-        while IFS='=' read -r url name; do
-            # 跳过注释和空行
-            [[ "$url" =~ ^[[:space:]]*# ]] && continue
-            [[ -z "${url// }" ]] && continue
-            
-            # 去除首尾空格
-            url=$(echo "$url" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            name=$(echo "$name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            
-            if [[ -n "$url" ]] && [[ -n "$name" ]]; then
-                MIRROR_NAMES["$url"]="$name"
-            fi
+        while IFS='=' read -r repo mirror_name; do
+            repo=$(_config_trim "$repo")
+            mirror_name=$(_config_trim "$mirror_name")
+            [[ -z "$repo" || "$repo" == \#* || -z "$mirror_name" ]] && continue
+            mirror_names["$repo"]="$mirror_name"
         done < "$CONF_DIR/mirror_names.conf"
     fi
-    
-    # 只显示简短的进度提示，不显示每个URL的详细进度条
+
     echo ""
-    print_info "正在检测 ${#REPOS[@]} 个镜像源的连通性..."
-    
-    local idx=0
+    print_info "$(lang_pick "正在探测 ${#REPOS[@]} 个镜像源连通性..." "Checking connectivity for ${#REPOS[@]} mirror sources...")"
+
     for repo in "${REPOS[@]}"; do
-        ((idx++))
-        local expanded
+        idx=$((idx + 1))
         expanded=$(echo "$repo" | sed "s/\$ARCH/$TARGET_ARCH/g" | sed "s/\$RELEASEVER/$RELEASE_VER/g")
 
-        # 获取中文名称
-        local mirror_name=""
-        # 尝试精确匹配
-        if [[ -n "${MIRROR_NAMES[$repo]+x}" ]]; then
-            mirror_name="${MIRROR_NAMES[$repo]}"
-        else
-            # 尝试前缀匹配
-            for prefix in "${!MIRROR_NAMES[@]}"; do
+        mirror_name="${mirror_names[$repo]:-}"
+        if [[ -z "$mirror_name" ]]; then
+            for prefix in "${!mirror_names[@]}"; do
                 if [[ "$repo" == "$prefix"* ]]; then
-                    mirror_name="${MIRROR_NAMES[$prefix]}"
+                    mirror_name="${mirror_names[$prefix]}"
                     break
                 fi
             done
-            
-            # 如果还是没有匹配，提取域名
-            if [[ -z "$mirror_name" ]]; then
-                local domain
-                domain=$(echo "$repo" | sed -E 's|https?://([^/]+).*|\1|')
-                mirror_name="${MIRROR_NAMES[$domain]:-$domain}"
-            fi
+        fi
+        if [[ -z "$mirror_name" ]]; then
+            domain=$(echo "$repo" | sed -E 's|https?://([^/]+).*|\1|')
+            mirror_name="${mirror_names[$domain]:-$domain}"
         fi
 
         if check_repo_availability "$expanded"; then
             good_repos+=("$repo")
-            # 显示中文名称和序号
-            printf "  [${COLOR_GREEN}✓${COLOR_RESET}] %s (%d/%d)\n" "$mirror_name" "$idx" "${#REPOS[@]}"
+            printf "  [%bOK%b] %s (%d/%d)\n" "$COLOR_GREEN" "$COLOR_RESET" "$mirror_name" "$idx" "${#REPOS[@]}"
         else
-            printf "  [${COLOR_RED}✗${COLOR_RESET}] %s (%d/%d) (跳过)\n" "$mirror_name" "$idx" "${#REPOS[@]}"
+            printf "  [%bSKIP%b] %s (%d/%d)\n" "$COLOR_YELLOW" "$COLOR_RESET" "$mirror_name" "$idx" "${#REPOS[@]}"
         fi
     done
 
     echo ""
     if [[ ${#good_repos[@]} -gt 0 ]]; then
         REPOS=("${good_repos[@]}")
-        print_success "检测到 ${#REPOS[@]} 个可用镜像源"
-        log "[结果] 选用 ${#REPOS[@]} 个可用源"
-        
-        # 保存检测结果到缓存
+        print_success "$(lang_pick "已选择 ${#REPOS[@]} 个可用镜像源" "Selected ${#REPOS[@]} reachable mirror sources")"
         save_mirror_cache "$TARGET_OS" "$TARGET_ARCH" "${REPOS[@]}"
-        
-        return 0
-    else
-        print_warning "所有镜像源不可达，仍将尝试下载"
-        log "[警告] 所有镜像不可达，仍将尝试下载"
-        return 1
-    fi
-}
-
-# =============================================
-# 生成临时 repo 配置文件
-# =============================================
-generate_repo_config(){
-    local repo_file="$WORK_DIR/repo_config/temp.repo"
-    mkdir -p "$WORK_DIR/repo_config"
-
-    # SSL 选项
-    local ssl_opt=""
-    if [[ "$SKIP_SSL" == "1" ]]; then
-        ssl_opt=$'sslverify=0\nip_resolve=4'
-    fi
-
-    # 构建展开后的 URL 列表
-    local -a expanded_urls=()
-    for repo_url in "${REPOS[@]}"; do
-        local x_url
-        x_url=$(echo "$repo_url" | sed "s/\$ARCH/$TARGET_ARCH/g" | sed "s/\$RELEASEVER/$RELEASE_VER/g")
-        expanded_urls+=("$x_url")
-    done
-
-    # 生成 repo 文件
-    cat > "$repo_file" <<'HEADER'
-[offline-temp]
-name=Offline Temp Repo
-HEADER
-
-    for x_url in "${expanded_urls[@]}"; do
-        echo "baseurl=$x_url" >> "$repo_file"
-    done
-
-    printf '%s\n' 'enabled=1' 'gpgcheck=0' 'skip_if_unavailable=1' >> "$repo_file"
-
-    if [[ -n "$ssl_opt" ]]; then
-        echo "$ssl_opt" >> "$repo_file"
-    fi
-
-    # 只返回文件路径，不输出日志（避免污染返回值）
-    echo "$repo_file"
-}
-
-# =============================================
-# 加载工具配置（支持多OS包组）
-# 全局变量输出：
-#   AVAILABLE_TOOLS - 工具ID列表（用于选择）
-#   AVAILABLE_TOOL_DESCS - 工具描述列表（用于显示）
-#   TOOL_RPM_PACKAGES - RPM系统的包名映射（tool_id -> packages）
-#   TOOL_DEB_PACKAGES - DEB系统的包名映射（tool_id -> packages）
-# =============================================
-load_tools_config(){
-    local conf_file="$CONF_DIR/tools.conf"
-    local target_os="${1:-$TARGET_OS}"
-    local -a tools=()
-    local -a descs=()
-    
-    # 声明关联数组存储包名映射
-    declare -gA TOOL_RPM_PACKAGES=()
-    declare -gA TOOL_DEB_PACKAGES=()
-
-    [[ ! -f "$conf_file" ]] && {
-        show_error_detail "配置错误" "工具配置文件不存在: $conf_file" "请检查配置文件"
-        return 1
-    }
-
-    while IFS='|' read -r tool_id desc rpm_pkgs deb_pkgs; do
-        # 跳过注释和空行
-        [[ "$tool_id" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${tool_id// }" ]] && continue
-
-        # 清理空格
-        tool_id=$(echo "$tool_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        desc=$(echo "$desc" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        rpm_pkgs=$(echo "$rpm_pkgs" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        deb_pkgs=$(echo "$deb_pkgs" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        
-        [[ -z "$tool_id" ]] && continue
-        
-        # 添加工具到列表
-        tools+=("$tool_id")
-        descs+=("$desc")
-        
-        # 存储包名映射
-        TOOL_RPM_PACKAGES["$tool_id"]="$rpm_pkgs"
-        TOOL_DEB_PACKAGES["$tool_id"]="$deb_pkgs"
-        
-    done < "$conf_file"
-
-    if [[ ${#tools[@]} -eq 0 ]]; then
-        show_error_detail "配置错误" "tools.conf 为空或格式错误" "请检查工具配置文件"
-        return 1
-    fi
-
-    # 返回工具列表（通过全局变量）
-    AVAILABLE_TOOLS=("${tools[@]}")
-    AVAILABLE_TOOL_DESCS=("${descs[@]}")
-    
-    log "[配置] 加载 ${#tools[@]} 个可用工具"
-    return 0
-}
-
-# =============================================
-# 获取工具描述
-# =============================================
-get_tool_description(){
-    local tool="$1"
-    
-    # 首先尝试从已加载的描述中获取
-    if [[ -n "${AVAILABLE_TOOLS+x}" ]] && [[ -n "${AVAILABLE_TOOL_DESCS+x}" ]]; then
-        for i in "${!AVAILABLE_TOOLS[@]}"; do
-            if [[ "${AVAILABLE_TOOLS[$i]}" == "$tool" ]]; then
-                echo "${AVAILABLE_TOOL_DESCS[$i]}"
-                return
-            fi
-        done
-    fi
-    
-    # 否则从配置文件读取
-    local conf_file="$CONF_DIR/tools.conf"
-    local desc=""
-    while IFS='|' read -r tool_id description _rpm _deb; do
-        # 跳过注释
-        [[ "$tool_id" =~ ^[[:space:]]*# ]] && continue
-        tool_id=$(echo "$tool_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-
-        if [[ "$tool_id" == "$tool" ]]; then
-            desc="$description"
-            break
-        fi
-    done < "$conf_file"
-
-    # 如果没有找到描述，尝试内核依赖描述
-    if [[ -z "$desc" ]]; then
-        desc=$(get_kernel_dep_description "$tool")
-    fi
-
-    echo "${desc:-工具}"
-}
-
-# =============================================
-# 根据目标OS获取工具的包名列表
-# 用法：get_tool_packages_for_os "htop" "openEuler22.03"
-# 返回：包名列表（空格分隔）
-# =============================================
-get_tool_packages_for_os(){
-    local tool_id="$1"
-    local target_os="${2:-$TARGET_OS}"
-    
-    # 判断是RPM还是DEB系统
-    local pkg_type=""
-    case "$target_os" in
-        openEuler*|Rocky*|CentOS*|AliOS*|Tlinux*|openAnolis*)
-            pkg_type="rpm"
-            ;;
-        Ubuntu*|Kylin*)
-            pkg_type="deb"
-            ;;
-        *)
-            # 默认尝试RPM
-            pkg_type="rpm"
-            ;;
-    esac
-    
-    # 获取对应的包名
-    local packages=""
-    if [[ "$pkg_type" == "rpm" ]]; then
-        packages="${TOOL_RPM_PACKAGES[$tool_id]:-}"
-    else
-        packages="${TOOL_DEB_PACKAGES[$tool_id]:-}"
-    fi
-    
-    # 如果没找到，返回工具ID本身作为后备
-    if [[ -z "$packages" ]]; then
-        echo "$tool_id"
-    else
-        echo "$packages"
-    fi
-}
-
-# =============================================
-# 获取当前OS下所有选中工具的实际包名列表
-# 用法：get_selected_tool_packages "htop,git,vim"
-# 返回：包名数组
-# =============================================
-get_selected_tool_packages(){
-    local selected_tools_str="$1"
-    local target_os="${2:-$TARGET_OS}"
-    local -a all_packages=()
-    
-    IFS=',' read -ra tools_arr <<< "$selected_tools_str"
-    
-    for tool in "${tools_arr[@]}"; do
-        [[ -z "$tool" ]] && continue
-        local packages
-        packages=$(get_tool_packages_for_os "$tool" "$target_os")
-        
-        # 将空格分隔的包名添加到数组
-        for pkg in $packages; do
-            all_packages+=("$pkg")
-        done
-    done
-    
-    # 输出所有包名
-    echo "${all_packages[@]}"
-}
-
-# =============================================
-# 获取内核依赖描述
-# =============================================
-get_kernel_dep_description(){
-    case "$1" in
-        make)                    echo "GNU make（编译工具）";;
-        dkms)                    echo "Dynamic Kernel Module Support（内核模块编译框架）";;
-        gcc)                     echo "GNU C 编译器";;
-        kernel-headers)          echo "内核头文件";;
-        kernel-devel)            echo "内核开发包";;
-        kernel-tlinux4-devel)    echo "Tlinux4 内核开发包";;
-        kernel-tlinux4-headers)  echo "Tlinux4 内核头文件";;
-        elfutils-libelf-devel)   echo "ELF 工具库开发包";;
-        linux-headers)           echo "Linux 内核头文件";;
-        linux-libc-dev)          echo "Linux C 库头文件";;
-        *)                       echo "内核依赖";;
-    esac
-}
-
-# =============================================
-# 保存用户偏好配置
-# =============================================
-save_user_preferences(){
-    local pref_file="$CONF_DIR/user_prefs.conf"
-
-    cat > "$pref_file" <<PREFS
-# 用户偏好配置
-LAST_OS=$TARGET_OS
-LAST_ARCH=$TARGET_ARCH
-LAST_SKIP_SSL=$SKIP_SSL
-PREFS
-
-    log "[配置] 已保存用户偏好"
-}
-
-# =============================================
-# 加载用户偏好配置
-# =============================================
-load_user_preferences(){
-    local pref_file="$CONF_DIR/user_prefs.conf"
-
-    if [[ -f "$pref_file" ]]; then
-        while IFS='=' read -r key value; do
-            [[ "$key" =~ ^[[:space:]]*# ]] && continue
-            [[ -z "${key// }" ]] && continue
-            key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            case "$key" in
-                LAST_OS) TARGET_OS="$value" ;;
-                LAST_ARCH) TARGET_ARCH="$value" ;;
-                LAST_SKIP_SSL) SKIP_SSL="$value" ;;
-            esac
-        done < "$pref_file"
-        log "[配置] 已加载用户偏好"
+        log "[repo] selected ${#REPOS[@]} reachable sources"
         return 0
     fi
+
+    print_warning "$(lang_pick "没有探测到可用镜像源，将继续尝试下载" "No reachable mirror source detected; download will still be attempted")"
+    log "[repo] all configured sources unreachable"
     return 1
 }
 
-# =============================================
-# 导出函数
-# =============================================
+generate_repo_config(){
+    local repo_file="$WORK_DIR/repo_config/temp.repo"
+    local repo_url expanded
+    local ssl_block=""
+
+    mkdir -p "$WORK_DIR/repo_config"
+
+    if [[ "$SKIP_SSL" == "1" ]]; then
+        ssl_block=$'sslverify=0\nip_resolve=4'
+    fi
+
+    cat > "$repo_file" <<'EOF'
+[offline-temp]
+name=Offline Temp Repo
+EOF
+
+    for repo_url in "${REPOS[@]}"; do
+        expanded=$(echo "$repo_url" | sed "s/\$ARCH/$TARGET_ARCH/g" | sed "s/\$RELEASEVER/$RELEASE_VER/g")
+        echo "baseurl=$expanded" >> "$repo_file"
+    done
+
+    printf '%s\n' 'enabled=1' 'gpgcheck=0' 'skip_if_unavailable=1' >> "$repo_file"
+    [[ -n "$ssl_block" ]] && echo "$ssl_block" >> "$repo_file"
+
+    echo "$repo_file"
+}
+
 get_tool_os_rule(){
-    local target_os="$1" target_arch="$2" tool_id="$3"
+    local target_os="$1"
+    local target_arch="$2"
+    local tool_id="$3"
     local -a rule_files=("$CONF_DIR/tool_os_rules.local.conf" "$CONF_DIR/tool_os_rules.conf")
     local rule_file os_pat arch_pat rule_tool status rpm_override deb_override suggestion
+
     for rule_file in "${rule_files[@]}"; do
         [[ -f "$rule_file" ]] || continue
         while IFS='|' read -r os_pat arch_pat rule_tool status rpm_override deb_override suggestion; do
-            [[ -z "${os_pat// }" || "$os_pat" =~ ^[[:space:]]*# ]] && continue
-            [[ -z "$arch_pat" ]] && arch_pat="*"
+            os_pat=$(_config_trim "$os_pat")
+            arch_pat=$(_config_trim "${arch_pat:-*}")
+            rule_tool=$(_config_trim "$rule_tool")
+            [[ -z "$os_pat" || "$os_pat" == \#* ]] && continue
             if [[ "$target_os" == $os_pat && "${target_arch:-*}" == $arch_pat && "$tool_id" == "$rule_tool" ]]; then
                 echo "${os_pat}|${arch_pat}|${rule_tool}|${status}|${rpm_override}|${deb_override}|${suggestion}"
                 return 0
@@ -484,8 +239,11 @@ get_tool_os_rule(){
 }
 
 get_tool_support_status_for_os(){
-    local tool_id="$1" target_os="${2:-$TARGET_OS}" target_arch="${3:-$TARGET_ARCH}"
+    local tool_id="$1"
+    local target_os="${2:-$TARGET_OS}"
+    local target_arch="${3:-$TARGET_ARCH}"
     local rule_line status
+
     rule_line=$(get_tool_os_rule "$target_os" "$target_arch" "$tool_id" 2>/dev/null || true)
     if [[ -n "$rule_line" ]]; then
         IFS='|' read -r _a _b _c status _d _e _f <<< "$rule_line"
@@ -495,8 +253,11 @@ get_tool_support_status_for_os(){
 }
 
 get_tool_support_suggestion_for_os(){
-    local tool_id="$1" target_os="${2:-$TARGET_OS}" target_arch="${3:-$TARGET_ARCH}"
+    local tool_id="$1"
+    local target_os="${2:-$TARGET_OS}"
+    local target_arch="${3:-$TARGET_ARCH}"
     local rule_line suggestion
+
     rule_line=$(get_tool_os_rule "$target_os" "$target_arch" "$tool_id" 2>/dev/null || true)
     if [[ -n "$rule_line" ]]; then
         IFS='|' read -r _a _b _c _d _e _f suggestion <<< "$rule_line"
@@ -506,22 +267,27 @@ get_tool_support_suggestion_for_os(){
     echo ""
 }
 
+_tool_pkg_type_for_os(){
+    case "${1:-$TARGET_OS}" in
+        openEuler*|Rocky*|CentOS*|AliOS*|Tlinux*|openAnolis*) echo "rpm" ;;
+        Ubuntu*|Kylin*) echo "deb" ;;
+        *) echo "rpm" ;;
+    esac
+}
+
 get_tool_packages_for_os(){
     local tool_id="$1"
     local target_os="${2:-$TARGET_OS}"
     local target_arch="${3:-$TARGET_ARCH}"
-    local pkg_type="rpm"
-    local packages="" rule_line status rpm_override deb_override _suggestion
-    case "$target_os" in
-        openEuler*|Rocky*|CentOS*|AliOS*|Tlinux*|openAnolis*) pkg_type="rpm" ;;
-        Ubuntu*|Kylin*) pkg_type="deb" ;;
-        *) pkg_type="rpm" ;;
-    esac
+    local pkg_type packages="" rule_line status rpm_override deb_override _suggestion
+
+    pkg_type=$(_tool_pkg_type_for_os "$target_os")
     if [[ "$pkg_type" == "rpm" ]]; then
         packages="${TOOL_RPM_PACKAGES[$tool_id]:-}"
     else
         packages="${TOOL_DEB_PACKAGES[$tool_id]:-}"
     fi
+
     rule_line=$(get_tool_os_rule "$target_os" "$target_arch" "$tool_id" 2>/dev/null || true)
     if [[ -n "$rule_line" ]]; then
         IFS='|' read -r _os_pat _arch_pat _tool status rpm_override deb_override _suggestion <<< "$rule_line"
@@ -536,87 +302,193 @@ get_tool_packages_for_os(){
             packages="$deb_override"
         fi
     fi
+
     [[ -z "$packages" ]] && echo "$tool_id" || echo "$packages"
 }
 
-# Override loader with explicit mode filtering (group/package/all).
+is_group_style_tool_for_os(){
+    local tool_id="$1"
+    local target_os="${2:-$TARGET_OS}"
+    local target_arch="${3:-$TARGET_ARCH}"
+    local packages pkg count=0
+
+    packages=$(get_tool_packages_for_os "$tool_id" "$target_os" "$target_arch")
+    [[ -z "$packages" ]] && return 1
+
+    for pkg in $packages; do
+        count=$((count + 1))
+        if [[ "$pkg" == @* || "$pkg" == *"*"* || "$pkg" == *"?"* ]]; then
+            return 0
+        fi
+    done
+
+    [[ $count -gt 1 ]]
+}
+
 load_tools_config(){
     local conf_dir="${1:-$CONF_DIR}"
     local target_os="${2:-$TARGET_OS}"
     local target_arch="${3:-$TARGET_ARCH}"
     local mode="${4:-${TOOL_SELECTION_MODE:-all}}"
     local conf_file="$conf_dir/tools.conf"
+    local tool_id desc rpm_pkgs deb_pkgs include_tool group_like
     local -a tools=()
     local -a descs=()
-    local -a filtered_tools=()
-    local -a filtered_descs=()
-    local tool_id desc rpm_pkgs deb_pkgs idx group_like
 
     declare -gA TOOL_RPM_PACKAGES=()
     declare -gA TOOL_DEB_PACKAGES=()
 
-    [[ ! -f "$conf_file" ]] && {
-        show_error_detail "配置错误" "工具配置文件不存在: $conf_file" "请检查配置文件路径"
+    if [[ ! -f "$conf_file" ]]; then
+        _config_error \
+            "工具配置文件不存在: $conf_file" \
+            "Tools config not found: $conf_file" \
+            "请检查 conf/tools.conf" \
+            "Check conf/tools.conf"
         return 1
-    }
+    fi
 
     while IFS='|' read -r tool_id desc rpm_pkgs deb_pkgs; do
-        [[ "$tool_id" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${tool_id// }" ]] && continue
-        tool_id=$(echo "$tool_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        desc=$(echo "$desc" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        rpm_pkgs=$(echo "$rpm_pkgs" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        deb_pkgs=$(echo "$deb_pkgs" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        [[ -z "$tool_id" ]] && continue
-        tools+=("$tool_id")
-        descs+=("$desc")
+        tool_id=$(_config_trim "$tool_id")
+        desc=$(_config_trim "$desc")
+        rpm_pkgs=$(_config_trim "$rpm_pkgs")
+        deb_pkgs=$(_config_trim "$deb_pkgs")
+
+        [[ -z "$tool_id" || "$tool_id" == \#* ]] && continue
+
         TOOL_RPM_PACKAGES["$tool_id"]="$rpm_pkgs"
         TOOL_DEB_PACKAGES["$tool_id"]="$deb_pkgs"
+
+        include_tool=1
+        if [[ "$mode" == "group" || "$mode" == "package" ]]; then
+            if is_group_style_tool_for_os "$tool_id" "$target_os" "$target_arch"; then
+                group_like=1
+            else
+                group_like=0
+            fi
+
+            if [[ "$mode" == "group" && $group_like -ne 1 ]]; then
+                include_tool=0
+            elif [[ "$mode" == "package" && $group_like -eq 1 ]]; then
+                include_tool=0
+            fi
+        fi
+
+        if [[ $include_tool -eq 1 ]]; then
+            tools+=("$tool_id")
+            descs+=("$desc")
+        fi
     done < "$conf_file"
 
     if [[ ${#tools[@]} -eq 0 ]]; then
-        show_error_detail "配置错误" "tools.conf 为空或格式错误" "请检查工具配置文件"
+        _config_error \
+            "当前模式下没有可用工具" \
+            "No tools available for current mode" \
+            "请检查 tools.conf 或切换工具选择模式" \
+            "Check tools.conf or switch tool selection mode"
         return 1
     fi
 
-    if [[ "$mode" == "group" || "$mode" == "package" ]]; then
-        for idx in "${!tools[@]}"; do
-            if is_group_style_tool_for_os "${tools[$idx]}" "$target_os" "$target_arch"; then
-                group_like=true
-            else
-                group_like=false
-            fi
-            if [[ "$mode" == "group" && "$group_like" == true ]]; then
-                filtered_tools+=("${tools[$idx]}")
-                filtered_descs+=("${descs[$idx]}")
-            elif [[ "$mode" == "package" && "$group_like" == false ]]; then
-                filtered_tools+=("${tools[$idx]}")
-                filtered_descs+=("${descs[$idx]}")
-            fi
-        done
-    else
-        filtered_tools=("${tools[@]}")
-        filtered_descs=("${descs[@]}")
-    fi
-
-    AVAILABLE_TOOLS=("${filtered_tools[@]}")
-    AVAILABLE_TOOL_DESCS=("${filtered_descs[@]}")
+    AVAILABLE_TOOLS=("${tools[@]}")
+    AVAILABLE_TOOL_DESCS=("${descs[@]}")
     log "[config] loaded ${#AVAILABLE_TOOLS[@]} tools (mode=$mode, os=$target_os, arch=$target_arch)"
     return 0
 }
 
-is_group_style_tool_for_os(){
-    local tool_id="$1" target_os="${2:-$TARGET_OS}" target_arch="${3:-$TARGET_ARCH}"
-    local packages pkg count=0
-    packages=$(get_tool_packages_for_os "$tool_id" "$target_os" "$target_arch")
-    [[ -z "$packages" ]] && return 1
-    for pkg in $packages; do
-        ((count++))
-        if [[ "$pkg" == @* || "$pkg" == *"*"* || "$pkg" == *"?"* ]]; then
-            return 0
-        fi
+get_tool_description(){
+    local tool="$1"
+    local i conf_file="$CONF_DIR/tools.conf" desc=""
+
+    if [[ -n "${AVAILABLE_TOOLS+x}" && -n "${AVAILABLE_TOOL_DESCS+x}" ]]; then
+        for i in "${!AVAILABLE_TOOLS[@]}"; do
+            if [[ "${AVAILABLE_TOOLS[$i]}" == "$tool" ]]; then
+                echo "${AVAILABLE_TOOL_DESCS[$i]}"
+                return 0
+            fi
+        done
+    fi
+
+    if [[ -f "$conf_file" ]]; then
+        while IFS='|' read -r tool_id description _rpm _deb; do
+            tool_id=$(_config_trim "$tool_id")
+            [[ -z "$tool_id" || "$tool_id" == \#* ]] && continue
+            if [[ "$tool_id" == "$tool" ]]; then
+                desc=$(_config_trim "$description")
+                break
+            fi
+        done < "$conf_file"
+    fi
+
+    [[ -z "$desc" ]] && desc=$(get_kernel_dep_description "$tool")
+    echo "${desc:-$tool}"
+}
+
+get_selected_tool_packages(){
+    local selected_tools_str="$1"
+    local target_os="${2:-$TARGET_OS}"
+    local -a all_packages=()
+    local tool packages pkg
+
+    IFS=',' read -ra tools_arr <<< "$selected_tools_str"
+    for tool in "${tools_arr[@]}"; do
+        tool=$(_config_trim "$tool")
+        [[ -z "$tool" ]] && continue
+        packages=$(get_tool_packages_for_os "$tool" "$target_os" "$TARGET_ARCH")
+        for pkg in $packages; do
+            all_packages+=("$pkg")
+        done
     done
-    [[ $count -gt 1 ]]
+
+    echo "${all_packages[*]}"
+}
+
+get_kernel_dep_description(){
+    case "$1" in
+        make) echo "$(lang_pick "GNU make 编译工具" "GNU make build tool")" ;;
+        dkms) echo "$(lang_pick "动态内核模块支持" "Dynamic Kernel Module Support")" ;;
+        gcc) echo "$(lang_pick "GNU C 编译器" "GNU C compiler")" ;;
+        kernel-headers) echo "$(lang_pick "内核头文件" "Kernel headers")" ;;
+        kernel-devel) echo "$(lang_pick "内核开发包" "Kernel development package")" ;;
+        kernel-tlinux4-devel) echo "$(lang_pick "Tlinux4 内核开发包" "Tlinux4 kernel development package")" ;;
+        kernel-tlinux4-headers) echo "$(lang_pick "Tlinux4 内核头文件" "Tlinux4 kernel headers")" ;;
+        elfutils-libelf-devel) echo "$(lang_pick "ELF 开发库" "ELF development library")" ;;
+        linux-headers) echo "$(lang_pick "Linux 内核头文件" "Linux kernel headers")" ;;
+        linux-libc-dev) echo "$(lang_pick "Linux libc 头文件" "Linux libc development headers")" ;;
+        *) echo "$(lang_pick "内核依赖" "Kernel dependency")" ;;
+    esac
+}
+
+save_user_preferences(){
+    local pref_file="$CONF_DIR/user_prefs.conf"
+
+    cat > "$pref_file" <<EOF
+# User preferences
+LAST_OS=$TARGET_OS
+LAST_ARCH=$TARGET_ARCH
+LAST_SKIP_SSL=$SKIP_SSL
+EOF
+
+    log "[config] user preferences saved"
+}
+
+load_user_preferences(){
+    local pref_file="$CONF_DIR/user_prefs.conf"
+    local key value
+
+    [[ -f "$pref_file" ]] || return 1
+
+    while IFS='=' read -r key value; do
+        key=$(_config_trim "$key")
+        value=$(_config_trim "$value")
+        [[ -z "$key" || "$key" == \#* ]] && continue
+        case "$key" in
+            LAST_OS) TARGET_OS="$value" ;;
+            LAST_ARCH) TARGET_ARCH="$value" ;;
+            LAST_SKIP_SSL) SKIP_SSL="$value" ;;
+        esac
+    done < "$pref_file"
+
+    log "[config] user preferences loaded"
+    return 0
 }
 
 export -f load_os_config
@@ -624,13 +496,13 @@ export -f check_repo_availability
 export -f filter_reachable_repos
 export -f pick_best_repos
 export -f generate_repo_config
-export -f load_tools_config
-export -f get_tool_description
-export -f get_tool_packages_for_os
-export -f is_group_style_tool_for_os
 export -f get_tool_os_rule
 export -f get_tool_support_status_for_os
 export -f get_tool_support_suggestion_for_os
+export -f get_tool_packages_for_os
+export -f is_group_style_tool_for_os
+export -f load_tools_config
+export -f get_tool_description
 export -f get_selected_tool_packages
 export -f get_kernel_dep_description
 export -f save_user_preferences
