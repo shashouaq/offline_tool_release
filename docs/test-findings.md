@@ -106,3 +106,36 @@ Use this file to collect each test round in one place.
     - deb_online PASS
     - rpm_offline PASS with skip
     - deb_offline PASS with skip
+
+### Round: round-20260425-manual-and-encoding-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + refreshed package/metadata modules + user manual export
+- Test scope: package-manager/metadata text cleanup, PDF manual export, autonomous validation rerun
+- Result summary:
+  - Local syntax gate: PASS
+  - Local PDF export: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=7
+  - deb_online(172.18.10.62): PASS, menu_hits=7
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: package-manager and metadata logs still contained mojibake from legacy file encoding damage
+  2. Repro steps: inspect `lib/package_manager.sh`, `lib/metadata/metadata_core.sh`, then review runtime logs
+  3. Expected: high-frequency repo/metadata logs and helper text should be readable and stable
+  4. Actual: old modules emitted garbled text into logs and UI paths
+  5. Root cause: legacy source files had already been encoding-damaged and were still reused in runtime
+  6. Fix: rewrote both modules as clean UTF-8/LF shell files and added a generated Chinese user manual plus PDF export script
+  7. Re-test result: syntax passed, PDF generated successfully, autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_134449.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS
+  - Path: docs/offline_tools_user_manual_zh_CN.pdf
+  - Key lines:
+    - generated from `docs/offline_tools_user_manual_zh_CN.md`
