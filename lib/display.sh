@@ -141,7 +141,7 @@ show_selected_tools(){
     echo ""
 }
 
-confirm_dialog(){
+display_confirm_dialog(){
     local message="$1"
     local default="${2:-n}"
     local _context="${3:-generic}"
@@ -164,7 +164,7 @@ confirm_dialog(){
     [[ "$response" =~ ^[Yy]$ ]]
 }
 
-show_back_prompt(){
+display_show_back_prompt(){
     echo ""
     print_color "$COLOR_CYAN" "Press Enter to return..."
     read -r
@@ -183,6 +183,6 @@ export -f display_tools_multicolumn
 export -f display_tools_with_desc
 export -f interactive_tool_selection
 export -f show_selected_tools
-export -f confirm_dialog
-export -f show_back_prompt
+export -f display_confirm_dialog
+export -f display_show_back_prompt
 export -f show_operation_result

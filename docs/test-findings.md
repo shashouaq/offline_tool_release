@@ -293,3 +293,35 @@ Use this file to collect each test round in one place.
     - deb_online PASS
     - rpm_offline PASS
     - deb_offline PASS
+
+### Round: round-20260425-structure-dedup-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + cleaned security/display structure
+- Test scope: remove duplicate function-name collisions, clean `security.sh`, local structure scan, quality gate, remote autonomous validation
+- Result summary:
+  - Local duplicate-function scan: PASS
+  - Local mojibake scan: PASS
+  - Local syntax gate: PASS
+  - Local quality gate: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=8
+  - deb_online(172.18.10.62): PASS, menu_hits=8
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: `display.sh` and `navigation.sh` both exported `confirm_dialog()` / `show_back_prompt()`, and `security.sh` still carried mojibake plus a duplicate checksum generator
+  2. Repro steps: scan function definitions across `lib/*.sh`, then inspect `lib/display.sh`, `lib/navigation.sh`, `lib/security.sh`
+  3. Expected: exported function names should be unique unless deliberate and documented
+  4. Actual: load order determined which implementation won, increasing maintenance risk
+  5. Root cause: earlier cleanup passes normalized text and workflow behavior before deduplicating helper ownership
+  6. Fix: renamed `display.sh` duplicates to internal helper names and rewrote `security.sh` as a clean UTF-8/LF module with a non-conflicting checksum helper
+  7. Re-test result: duplicate scan returned empty and remote autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_165448.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS
