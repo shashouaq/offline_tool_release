@@ -1,12 +1,12 @@
 #!/bin/bash
 # =====================================================
-# 缂傚倷绀侀崐钘夌暦閻㈢鍚归幖绮规閸熷懘鏌曟径鍫濆姎鐎电増姊归〃銉╂倷閹绘帗姣愰悷?v14.0 - 濠电姭鎷冮崨顓濈捕閻庤鎮傛禍鍫曞箖?# 闂備礁鎲″濠氬窗閺囥垹绀傛慨妞诲亾闁轰礁绉撮～婵嬵敇閻曚椒鐢婚梻浣哄帶閻ゅ洤螞閸曨厸鍋撻崹顐劷缂侇喖顭烽弫宥夊礋椤掆偓閳?| 濠电姰鍨奸崺鏍嚌妤ｅ啫鍨傛い蹇撶墕閸欏﹪鏌涢幘妞炬缁?| 闂備胶顭堢换鎰板疮椤栫偛姹查柣鏃傚帶缁犲弶銇勯弮鍥ㄧ《妞ゅ簶鍋撻梻?| 婵°倗濮烽崑鐐哄磿婵傛悶鈧線骞嬮悙纰樻灃闁诲函缍嗛崢鐣岀矈?
-# 闂備礁鎼鍫ュ春閺嶎厽鍊垫い鏍仦閺咁剚鎱ㄥ鍡楀闁哄棙宀搁弻娑滅疀鐎ｎ亜顬夐柤鍨涙櫊閺屾稖顦虫い銊ユ噽閳ь剙鐏氶悡锟犲极瀹ュ洣娌柣鎰靛墻濞笺劍绻涚€涙鐭婃繛鏉戝槻鑿愭い鏇楀亾妤犵偛閰ｆ俊鍫曞川椤旂⒈浼呴梻浣告贡椤ｄ粙寮插☉銏″創?
+# Offline Tools Platform v14.0
+# Main entry for target selection, download, bundle creation, and offline install.
 # =====================================================
 set -uo pipefail
 
 # =============================================
-# 闂備胶顭堢换鍫ュ礉瀹€鍕剳妞ゆ帒瀚惌妤佹叏濡炶浜鹃梺闈╃稻濡炶棄鐣烽鍕殕闁告劦浜為崬鎾倵閸偅绶查悗姘煎墴瀹曞綊宕归锝呭伎闁诲函缍嗘禍婊堫敋?
+# Core paths and runtime state.
 # =============================================
 SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 BASE_DIR="$SCRIPT_DIR"
@@ -72,7 +72,7 @@ if [[ -d "$WORK_DIR" ]]; then
 fi
 mkdir -p "$OUTPUT_DIR" "$LOG_DIR" "$WORK_DIR" "$PKG_DIR"
 
-# 闂備胶鍎甸弲鈺呭窗濡ゅ懏鍋夐柨婵嗩槹閻撯偓閻庡箍鍎卞ú銊╁几?
+# Selected target settings.
 TARGET_OS=""
 TARGET_ARCH=""
 PKG_TYPE=""
@@ -82,20 +82,21 @@ FORCEARCH=""
 STATIC_TARBALL=""
 TEMP_REPO_FILE=""
 
-# 闁诲氦顫夐幃鍫曞磿闁秴鐭楅柛褎顨嗛悞璇差熆鐠轰警鍎忔い?
+# Selected tool state.
 declare -a AVAILABLE_TOOLS=()
 declare -a SELECTED_TOOLS=()
 declare -a KERNEL_DEPS=()
 
 # =============================================
-# 闂備礁鎼悧鍐磻閹剧粯鍊堕煫鍥ㄦ尵缁犱即鎮楅崹顐ゅ弨鐎殿噮鍣ｆ俊鐑藉Ψ瑜忛宥夋⒑閸涘﹤鐏卞┑顔哄€濆鎶芥偄閸忓吋娅栭梺鍓插亝缁诲啴鐓鍕厱闁哄啫鍊搁瀷濠电偞娼欏鐪攇ger.sh濠电偞鍨堕弻銊╊敄閸涱喗娅犻柣妯挎珪婵挳鎮归幁鎺戝闁哄棗绻橀弻?# =============================================
+# Minimal bootstrap logger used before logger.sh is loaded.
+# =============================================
 _simple_log(){
     local msg="[$(date '+%F %T')] $1"
     echo "$msg" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 # =============================================
-# Load core modules
+# Load core modules.
 # =============================================
 source "$LIB_DIR/ui.sh" || { echo "ERROR: failed to load ui.sh"; exit 1; }
 source "$LIB_DIR/i18n.sh" || { echo "ERROR: failed to load i18n.sh"; exit 1; }
@@ -126,18 +127,19 @@ source "$LIB_DIR/installer.sh" || { echo "ERROR: failed to load installer.sh"; e
 source "$LIB_DIR/utilities.sh" || { echo "ERROR: failed to load utilities.sh"; exit 1; }
 source "$LIB_DIR/mirror_cache.sh" || { echo "ERROR: failed to load mirror_cache.sh"; exit 1; }
 
-# Optional v14 modules
+# Optional v14 modules.
 source "$LIB_DIR/signature.sh" 2>/dev/null || _simple_log "[WARN] failed to load signature.sh"
 source "$LIB_DIR/incremental.sh" 2>/dev/null || _simple_log "[WARN] failed to load incremental.sh"
 source "$LIB_DIR/dependency_tree.sh" 2>/dev/null || _simple_log "[WARN] failed to load dependency_tree.sh"
 source "$LIB_DIR/version_check.sh" 2>/dev/null || _simple_log "[WARN] failed to load version_check.sh"
 
 # =============================================
-# 闂備礁鎼崯銊╁磿鏉堚晜宕查柡鍐ㄧ墕缁€鍕煠閹帒鍔滄繛鍫濈埣閺屻劌鈽夊Ο鐓庮暫闂佸憡鐟ョ换鎺撶閿曞倸鐒垫い鎺戝閻銇勯弽銊х煁闁哄棗绻橀弻?# =============================================
+# Interactive logger.
+# =============================================
 log(){
     local msg="[$(date '+%F %T')] $1"
     echo "$msg" >> "$LOG_FILE"
-    # 闂備礁鎲￠悷顖涚濠婂喛鑰挎い蹇撴噽椤╂煡鏌曢崼婵嗩伀闂傚绉堕埀顒侇問閸犳牜鎹㈤幒妤冨祦闁糕剝蓱濞呯娀鏌涢幇闈涘箻缂傚牆顭烽弻娑㈠箣濠靛洦鍎撻梺绯曟櫅閻偐妲愰幒妤€閱囬柕蹇婃櫃缁?
+    # Echo to terminal only in interactive mode; file logging stays enabled.
     if [[ -t 1 ]]; then
         echo "$msg"
     fi
@@ -149,7 +151,7 @@ die(){
 }
 
 # =============================================
-# Main menu
+# Main menu.
 # =============================================
 main_menu(){
     while true; do
@@ -208,7 +210,7 @@ main_menu(){
 }
 
 # =============================================
-# Command line arguments
+# Command line arguments.
 # =============================================
 handle_cli_args(){
     [[ $# -eq 0 ]] && return 0
@@ -271,7 +273,7 @@ handle_cli_args(){
 }
 
 # =============================================
-# Program entry
+# Program entry.
 # =============================================
 main(){
     handle_cli_args "$@"

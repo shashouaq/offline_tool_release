@@ -262,3 +262,34 @@ Use this file to collect each test round in one place.
     - deb_online PASS
     - rpm_offline PASS
     - deb_offline PASS
+
+### Round: round-20260425-main-entry-cleanup-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + cleaned main entry script
+- Test scope: remove remaining mojibake from the main entry script, local quality gate, workspace mojibake scan, remote autonomous validation
+- Result summary:
+  - Local mojibake scan: PASS
+  - Local syntax gate: PASS
+  - Local quality gate: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=8
+  - deb_online(172.18.10.62): PASS, menu_hits=8
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: `offline_tools_v14.sh` still contained encoding-damaged comment blocks and inline notes
+  2. Repro steps: scan shell sources for mojibake patterns, then inspect `offline_tools_v14.sh`
+  3. Expected: the main entry script should be readable and maintainable without changing runtime behavior
+  4. Actual: the file still had legacy comment corruption even though functional paths were already stabilized
+  5. Root cause: earlier fixes prioritized runtime logic and user-facing text, leaving the entry script comments untouched
+  6. Fix: rewrote `offline_tools_v14.sh` as a clean UTF-8/LF file with equivalent logic and readable comments
+  7. Re-test result: mojibake scan returned empty and remote autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_163259.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS
