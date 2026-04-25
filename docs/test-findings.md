@@ -200,3 +200,34 @@ Use this file to collect each test round in one place.
     - deb_online PASS
     - rpm_offline PASS
     - deb_offline PASS
+
+### Round: round-20260425-tools-conf-encoding-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + cleaned tool catalog
+- Test scope: `tools.conf` encoding cleanup, tool description loading smoke, quality gate, remote autonomous validation
+- Result summary:
+  - Local tool description smoke: PASS
+  - Local syntax gate: PASS
+  - Local quality gate: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=10
+  - deb_online(172.18.10.62): PASS, menu_hits=10
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: tool descriptions and file comments in `conf/tools.conf` were still mojibake-damaged
+  2. Repro steps: inspect `conf/tools.conf`, then load descriptions through `load_tools_config` and `get_tool_description`
+  3. Expected: tool selection should render readable Chinese descriptions while preserving existing tool/package mappings
+  4. Actual: configuration descriptions were loaded from an encoding-damaged file, so the selection UI risked showing garbled labels
+  5. Root cause: the catalog file itself had not yet been normalized after earlier module cleanups
+  6. Fix: rewrote `conf/tools.conf` as clean UTF-8/LF content, preserving all 65 tool IDs and existing RPM/DEB mappings
+  7. Re-test result: smoke returned readable descriptions and remote autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_154124.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS
