@@ -139,3 +139,33 @@ Use this file to collect each test round in one place.
   - Path: docs/offline_tools_user_manual_zh_CN.pdf
   - Key lines:
     - generated from `docs/offline_tools_user_manual_zh_CN.md`
+
+### Round: round-20260425-manifest-listing-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + refreshed metadata list/install/utility modules
+- Test scope: manifest-driven bundle listing smoke + quality gate + remote autonomous validation
+- Result summary:
+  - Local metadata list smoke: PASS
+  - Local quality gate: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=8
+  - deb_online(172.18.10.62): PASS, menu_hits=8
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: manifest-driven bundle list initially rendered only the section header under `set -e`
+  2. Repro steps: source `metadata_list.sh` in a `set -e` shell and call `list_available_packages`
+  3. Expected: bundle row with target OS, arch, size, and tool count should be shown
+  4. Actual: arithmetic post-increment and old parsing path caused early termination before row output
+  5. Root cause: `((found++))` under `set -e` plus overcomplicated manifest tool parsing
+  6. Fix: switched to explicit arithmetic assignment, simplified manifest tool extraction, and rewrote legacy list/install/help modules as clean UTF-8/LF files
+  7. Re-test result: list smoke passed and remote autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_144726.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS
