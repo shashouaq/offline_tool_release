@@ -231,3 +231,34 @@ Use this file to collect each test round in one place.
     - deb_online PASS
     - rpm_offline PASS
     - deb_offline PASS
+
+### Round: round-20260425-selfcheck-and-workflow-text-pass
+- Environment:
+  - OS: Windows host + WSL + 4 remote validation hosts
+  - Arch: mixed
+  - Online/Offline: mixed
+- Build/Script version: offline_tools_v14.sh + cleaned self-check/workflow text paths
+- Test scope: remove remaining `[CN]` placeholder text from self-check and workflow menus, local quality gate, remote autonomous validation
+- Result summary:
+  - Local placeholder scan: PASS
+  - Local syntax gate: PASS
+  - Local quality gate: PASS
+  - rpm_online(172.18.10.61): PASS, menu_hits=8
+  - deb_online(172.18.10.62): PASS, menu_hits=8
+  - rpm_offline(172.18.10.64): PASS
+  - deb_offline(172.18.10.65): PASS
+- Failures:
+  1. Symptom: environment self-check and download workflow still exposed temporary `[CN]` bilingual placeholders
+  2. Repro steps: search shell modules for `[CN]`, then inspect `lib/system_select.sh`, `lib/dependency_check.sh`, and `lib/workflow.sh`
+  3. Expected: all rendered prompts and status text should be final bilingual content rather than temporary placeholders
+  4. Actual: several prompts, warnings, and selection labels still used draft placeholder markers
+  5. Root cause: these modules were stabilized functionally earlier, but their remaining text constants had not yet been normalized
+  6. Fix: replaced remaining placeholder text with proper Chinese/English strings in self-check and workflow paths
+  7. Re-test result: placeholder scan returned empty and remote autonomous validation passed on all 4 hosts
+- Logs:
+  - Path: logs/autonomous_validation/results_20260425_162021.tsv
+  - Key lines:
+    - rpm_online PASS
+    - deb_online PASS
+    - rpm_offline PASS
+    - deb_offline PASS

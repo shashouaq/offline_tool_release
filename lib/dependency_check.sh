@@ -13,7 +13,7 @@ dep_display_env_summary(){
     local pretty_os
     pretty_os=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "unknown")
 
-    print_section "$(_dep_msg '[CN] Environment self-check' 'Environment self-check')"
+    print_section "$(_dep_msg '环境自检' 'Environment self-check')"
     show_status "info" "$(t INSTALL_OS_NAME): ${pretty_os}"
     show_status "info" "$(t INSTALL_ARCH): $(uname -m)"
     show_status "info" "$(t INSTALL_KERNEL): $(uname -r)"
@@ -26,7 +26,7 @@ dep_display_env_summary(){
     if [[ -n "${TARGET_OS:-}" ]] && [[ -n "$current_os_name" ]] && [[ "$current_os_name" != "$TARGET_OS" ]]; then
         show_status "warn" "$(t WARNING): $(t CAUSE_SYSTEM_MISMATCH)"
     else
-        show_status "ok" "$(_dep_msg '[CN] Current system info looks good' 'Current system info looks good')"
+        show_status "ok" "$(_dep_msg '当前系统信息正常' 'Current system info looks good')"
     fi
 }
 
@@ -64,7 +64,7 @@ dep_collect_missing(){
             fi
             ;;
         *)
-            show_status "warn" "$(_dep_msg '[CN] Package manager not found (dnf/yum/apt)' 'Package manager not found (dnf/yum/apt)')"
+            show_status "warn" "$(_dep_msg '未检测到包管理器（dnf/yum/apt）' 'Package manager not found (dnf/yum/apt)')"
             ;;
     esac
 
@@ -88,15 +88,15 @@ dep_manual_menu(){
     local choice
 
     log_event "INFO" "dep_check" "menu_render" "missing dependency menu shown" "count=${#missing[@]}" "items=${missing[*]}"
-    print_section "$(_dep_msg '[CN] Dependency actions' 'Dependency actions')"
-    print_warning "$(_dep_msg '[CN] Missing dependencies' 'Missing dependencies') (${#missing[@]}): ${missing[*]}"
-    echo "  1) $(_dep_msg '[CN] Auto install missing dependencies' 'Auto install missing dependencies')"
-    echo "  2) $(_dep_msg '[CN] Continue anyway (may fail later)' 'Continue anyway (may fail later)')"
-    echo "  0) $(_dep_msg '[CN] Back' 'Back')"
+    print_section "$(_dep_msg '依赖处理' 'Dependency actions')"
+    print_warning "$(_dep_msg '缺失依赖' 'Missing dependencies') (${#missing[@]}): ${missing[*]}"
+    echo "  1) $(_dep_msg '自动安装缺失依赖' 'Auto install missing dependencies')"
+    echo "  2) $(_dep_msg '继续执行（后续可能失败）' 'Continue anyway (may fail later)')"
+    echo "  0) $(_dep_msg '返回' 'Back')"
     echo ""
 
     while true; do
-        printf "%s" "$(_dep_msg '[CN] Select [1/2/0]: ' 'Select [1/2/0]: ')"
+        printf "%s" "$(_dep_msg '请选择 [1/2/0]: ' 'Select [1/2/0]: ')"
         read -r choice
         choice=${choice:-1}
         log_user_input "dep_manual_menu" "$choice"
@@ -104,7 +104,7 @@ dep_manual_menu(){
             1) return 10 ;;
             2) return 20 ;;
             0) return 30 ;;
-            *) print_warning "$(_dep_msg '[CN] Invalid input' 'Invalid input'): $choice" ;;
+            *) print_warning "$(_dep_msg '输入无效' 'Invalid input'): $choice" ;;
         esac
     done
 }
@@ -118,12 +118,12 @@ check_install_deps(){
     if [[ ${#DEP_MISSING[@]} -eq 0 ]]; then
         print_success "$(t INSTALL_VERIFY_SUCCESS)"
         log_event "INFO" "dep_check" "menu_render" "dependency pass menu shown"
-        print_section "$(_dep_msg '[CN] Dependency check result' 'Dependency check result')"
-        echo "  1) $(_dep_msg '[CN] Continue' 'Continue')"
-        echo "  0) $(_dep_msg '[CN] Back' 'Back')"
+        print_section "$(_dep_msg '依赖检查结果' 'Dependency check result')"
+        echo "  1) $(_dep_msg '继续' 'Continue')"
+        echo "  0) $(_dep_msg '返回' 'Back')"
         echo ""
         local pass_choice
-        printf "%s" "$(_dep_msg '[CN] Select [1/0]: ' 'Select [1/0]: ')"
+        printf "%s" "$(_dep_msg '请选择 [1/0]: ' 'Select [1/0]: ')"
         read -r pass_choice
         pass_choice=${pass_choice:-1}
         log_user_input "dep_pass_menu" "$pass_choice"
@@ -134,8 +134,8 @@ check_install_deps(){
     dep_manual_menu "${DEP_MISSING[@]}"
     case $? in
         10) auto_install_deps "${DEP_MISSING[@]}" || return 1 ;;
-        20) print_warning "$(_dep_msg '[CN] Continue without auto-install' 'Continue without auto-install')" ;;
-        30) print_info "$(_dep_msg '[CN] Back to previous menu' 'Back to previous menu')"; return 1 ;;
+        20) print_warning "$(_dep_msg '未自动安装，继续后续流程' 'Continue without auto-install')" ;;
+        30) print_info "$(_dep_msg '返回上级菜单' 'Back to previous menu')"; return 1 ;;
         *) return 1 ;;
     esac
     return 0
@@ -173,7 +173,7 @@ auto_install_deps(){
             done
             ;;
         *)
-            show_error_detail "$(t ERROR_CRITICAL)" "$(_dep_msg '[CN] Unsupported package manager' 'Unsupported package manager'): ${cur_pm:-none}" "$(t SOLUTION_CHECK_REPO)"
+            show_error_detail "$(t ERROR_CRITICAL)" "$(_dep_msg '不支持的包管理器' 'Unsupported package manager'): ${cur_pm:-none}" "$(t SOLUTION_CHECK_REPO)"
             return 1
             ;;
     esac

@@ -224,13 +224,13 @@ run_download(){
     fi
 
     show_selected_tools "${SELECTED_TOOLS[@]}"
-    confirm_dialog "$(t DOWNLOAD_START) ${#SELECTED_TOOLS[@]} $(_wf_msg '[CN] tools' 'tools')" "y" "download" || {
+    confirm_dialog "$(t DOWNLOAD_START) ${#SELECTED_TOOLS[@]} $(_wf_msg '个工具' 'tools')" "y" "download" || {
         log_action_end "download" "run" "cancel" "user_declined"
         return
     }
 
     filter_reachable_repos || {
-        print_error "$(_wf_msg '[CN] No reachable mirrors after probe' 'No reachable mirrors after probe')"
+        print_error "$(_wf_msg '镜像源探测后无可用源' 'No reachable mirrors after probe')"
         log_action_end "download" "run" "failed" "no_reachable_repos"
         return 1
     }
@@ -283,14 +283,14 @@ run_download(){
     local success_count=${#successful_tools[@]}
     local failed_count=${#failed_tools[@]}
     if [[ $success_count -eq 0 || $pkg_count -eq 0 ]]; then
-        print_error "$(_wf_msg '[CN] No installable downloads, check repo/network/tool config' 'No installable downloads, check repo/network/tool config')"
+        print_error "$(_wf_msg '没有可安装的下载结果，请检查仓库、网络或工具配置' 'No installable downloads, check repo/network/tool config')"
         show_back_prompt
         log_action_end "download" "run" "failed" "no_successful_downloads"
         return 1
     fi
 
     if [[ $failed_count -gt 0 ]]; then
-        print_warning "$(_wf_msg '[CN] Some tools failed, packaging successful tools only:' 'Some tools failed, packaging successful tools only:')"
+        print_warning "$(_wf_msg '部分工具失败，仅打包成功工具：' 'Some tools failed, packaging successful tools only:')"
         local ft rsn det
         for ft in "${failed_tools[@]}"; do
             IFS='|' read -r rsn det <<< "$(tool_failure_reason_detail "$ft")"
@@ -302,16 +302,16 @@ run_download(){
                 append_local_unsupported_rule "$TARGET_OS" "$TARGET_ARCH" "$ft" "$rsn" "$det"
             fi
         done
-        print_info "$(_wf_msg '[CN] Reason key: SOURCE_UNREACHABLE=source issue, PACKAGE_OR_GROUP_NOT_FOUND=name issue, DEPENDENCY_RESOLVE_FAILED=dependency issue' 'Reason key: SOURCE_UNREACHABLE=source issue, PACKAGE_OR_GROUP_NOT_FOUND=name issue, DEPENDENCY_RESOLVE_FAILED=dependency issue')"
+        print_info "$(_wf_msg '原因说明：SOURCE_UNREACHABLE=源问题，PACKAGE_OR_GROUP_NOT_FOUND=包名或组名问题，DEPENDENCY_RESOLVE_FAILED=依赖解析问题' 'Reason key: SOURCE_UNREACHABLE=source issue, PACKAGE_OR_GROUP_NOT_FOUND=name issue, DEPENDENCY_RESOLVE_FAILED=dependency issue')"
 
         metadata_tools=("${successful_tools[@]}")
         if [[ ${#metadata_tools[@]} -eq 0 ]]; then
-            print_error "$(_wf_msg '[CN] No successful tools to package' 'No successful tools to package')"
+        print_error "$(_wf_msg '没有成功工具可供打包' 'No successful tools to package')"
             log_action_end "download" "run" "failed" "all_tools_failed"
             return 1
         fi
     else
-        print_success "$(_wf_msg '[CN] Selected tools downloaded successfully' 'Selected tools downloaded successfully')"
+        print_success "$(_wf_msg '所选工具下载成功' 'Selected tools downloaded successfully')"
     fi
 
     write_tool_mapping_files "$PKG_DIR" "$TARGET_OS" "${metadata_tools[@]}"
@@ -332,7 +332,7 @@ run_download(){
 
     print_section "$(t TOOLS_PACKAGE_TITLE)"
     printf "  - %s\n" "${metadata_tools[@]}"
-    show_status "ok" "$(_wf_msg '[CN] Installable tools' 'Installable tools'): ${#metadata_tools[@]}"
+    show_status "ok" "$(_wf_msg '可安装工具' 'Installable tools'): ${#metadata_tools[@]}"
 
     show_navigation_menu "main_menu"
     log_action_end "download" "run" "ok" "packaged_tools=${#metadata_tools[@]}"
@@ -359,15 +359,15 @@ check_and_prompt_existing_package(){
     echo "  $(t CONFIG_TARGET): ${target_os}_${target_arch}"
     echo "  $tarball"
     if [[ ${#EXISTING_PACKAGE_TOOLS[@]} -gt 0 ]]; then
-        print_info "$(_wf_msg '[CN] Existing tools:' 'Existing tools:')"
+        print_info "$(_wf_msg '已存在的工具：' 'Existing tools:')"
         printf "  %s\n" "${EXISTING_PACKAGE_TOOLS[@]}"
     fi
 
-    echo "  1) $(_wf_msg '[CN] Continue to tool selection' 'Continue to tool selection')"
-    echo "  2) $(_wf_msg '[CN] Back to previous menu' 'Back to previous menu')"
-    echo "  3) $(_wf_msg '[CN] Back to main menu' 'Back to main menu')"
+        echo "  1) $(_wf_msg '继续进入工具选择' 'Continue to tool selection')"
+        echo "  2) $(_wf_msg '返回上级菜单' 'Back to previous menu')"
+        echo "  3) $(_wf_msg '返回主菜单' 'Back to main menu')"
     local pre_choice
-    read -r -p "$(_wf_msg '[CN] Select action [1]: ' 'Select action [1]: ')" pre_choice
+        read -r -p "$(_wf_msg '请选择操作 [1]: ' 'Select action [1]: ')" pre_choice
     pre_choice=${pre_choice:-1}
     case "$pre_choice" in
         2) echo "back"; return 0 ;;
@@ -378,14 +378,14 @@ check_and_prompt_existing_package(){
     echo "  2) $(t EXISTING_NEW)"
     echo "  3) $(t EXISTING_CANCEL)"
     local choice
-    read -r -p "$(_wf_msg '[CN] Select mode [1]: ' 'Select mode [1]: ')" choice
+    read -r -p "$(_wf_msg '请选择模式 [1]: ' 'Select mode [1]: ')" choice
     choice=${choice:-1}
     case "$choice" in
         1) echo "merge"; return 0 ;;
         2)
-            print_warning "$(_wf_msg '[CN] Will remove existing offline package:' 'Will remove existing offline package:') $tarball"
+            print_warning "$(_wf_msg '将删除已有离线包：' 'Will remove existing offline package:') $tarball"
             local confirm
-            read -r -p "$(_wf_msg '[CN] Confirm delete? [y/N]: ' 'Confirm delete? [y/N]: ')" confirm
+            read -r -p "$(_wf_msg '确认删除？ [y/N]: ' 'Confirm delete? [y/N]: ')" confirm
             confirm=${confirm:-N}
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 rm -f "$tarball" "${tarball}.sha256"

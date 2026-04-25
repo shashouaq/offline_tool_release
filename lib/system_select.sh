@@ -38,8 +38,8 @@ select_os_arch(){
     detected=$(detect_current_os 2>/dev/null || true)
     cur_arch=$(detect_current_arch)
     if [[ -n "$detected" ]]; then
-        show_status "info" "$(_ss_msg '[CN] Detected OS' 'Detected OS'): $detected ($cur_arch)"
-        echo "$(_ss_msg '[CN] Press Enter to use detected OS, or input number to choose another' 'Press Enter to use detected OS, or input number to choose another')"
+        show_status "info" "$(_ss_msg '检测到当前系统' 'Detected OS'): $detected ($cur_arch)"
+        echo "$(_ss_msg '直接回车使用当前系统，输入编号可切换目标系统' 'Press Enter to use detected OS, or input number to choose another')"
     fi
 
     read -r -p "$(t OS_USE_DETECTED): " c
@@ -74,7 +74,7 @@ select_os_arch(){
     echo "  1) $(t ARCH_X86)"
     echo "  2) $(t ARCH_AARCH)"
     echo "  3) $(t ARCH_LOONGARCH)"
-    read -r -p "$(_ss_msg '[CN] Select architecture [1]: ' 'Select architecture [1]: ')" c
+    read -r -p "$(_ss_msg '请选择架构 [1]: ' 'Select architecture [1]: ')" c
     c=${c:-1}
     case "$c" in
         1) TARGET_ARCH="x86_64" ;;
@@ -86,7 +86,7 @@ select_os_arch(){
     print_section "$(t OS_SSL_TITLE)"
     echo "  1) $(t SSL_NO)"
     echo "  2) $(t SSL_YES)"
-    read -r -p "$(_ss_msg '[CN] Select [1]: ' 'Select [1]: ')" c
+    read -r -p "$(_ss_msg '请选择 [1]: ' 'Select [1]: ')" c
     c=${c:-1}
     [[ "$c" == "2" ]] && SKIP_SSL=1 || SKIP_SSL=0
 
@@ -96,7 +96,7 @@ select_os_arch(){
 
     load_os_config "$TARGET_OS" || { log_action_end "select" "target_system" "failed" "load_os_config"; return 1; }
     pick_best_repos
-    print_section "$(_ss_msg '[CN] Entering environment self-check menu' 'Entering environment self-check menu')"
+    print_section "$(_ss_msg '进入环境自检菜单' 'Entering environment self-check menu')"
     check_install_deps || { log_action_end "select" "target_system" "failed" "dependency_check"; return 1; }
 
     STATIC_TARBALL="$work_dir/output/offline_${TARGET_OS}_${TARGET_ARCH}_merged.tar.xz"
@@ -107,7 +107,7 @@ select_os_arch(){
 show_system_summary(){
     local target_os="$1"
     local target_arch="$2"
-    print_section "$(_ss_msg '[CN] System Summary' 'System Summary')"
+    print_section "$(_ss_msg '系统摘要' 'System Summary')"
     echo "  $(t CONFIG_TARGET): $target_os"
     echo "  $(t INSTALL_ARCH): $target_arch"
     echo "  $(t PKG_TYPE): $(get_pkg_type_from_os "$target_os")"
