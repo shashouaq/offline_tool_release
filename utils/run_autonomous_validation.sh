@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 KEY_PATH="${KEY_PATH:-/mnt/c/Users/wei.qiao/Hkzy@8000}"
-REMOTE_DIR="${REMOTE_DIR:-/root/offline_tool_release_20260424}"
+REMOTE_DIR="${REMOTE_DIR:-/root/offline_tool_release_v1}"
 SSH_USER="${SSH_USER:-root}"
 SSH_PORT="${SSH_PORT:-22}"
 RESULT_DIR="${ROOT_DIR}/logs/autonomous_validation"
@@ -71,11 +71,11 @@ run_menu_regression_if_possible(){
   local connectivity="$2"
 
   if [[ "$connectivity" == "online" ]]; then
-    ssh_run "$host" "cd '${REMOTE_DIR}' && chmod +x ./utils/run_menu_regression.sh ./offline_tools_v14.sh ./utils/test_menu_visibility.expect && ./utils/run_menu_regression.sh"
+    ssh_run "$host" "cd '${REMOTE_DIR}' && chmod +x ./utils/run_menu_regression.sh ./offline_tools_v1.sh ./utils/test_menu_visibility.expect && ./utils/run_menu_regression.sh"
     return 0
   fi
 
-  ssh_run "$host" "if command -v expect >/dev/null 2>&1; then cd '${REMOTE_DIR}' && chmod +x ./utils/run_menu_regression.sh ./offline_tools_v14.sh ./utils/test_menu_visibility.expect && ./utils/run_menu_regression.sh; else echo '[auto-validate] SKIP: offline host without expect'; fi"
+  ssh_run "$host" "if command -v expect >/dev/null 2>&1; then cd '${REMOTE_DIR}' && chmod +x ./utils/run_menu_regression.sh ./offline_tools_v1.sh ./utils/test_menu_visibility.expect && ./utils/run_menu_regression.sh; else echo '[auto-validate] SKIP: offline host without expect'; fi"
 }
 
 run_one_host(){
@@ -90,7 +90,7 @@ run_one_host(){
     echo "[auto-validate] host=${host} label=${label} family=${family} connectivity=${connectivity}"
     echo "[auto-validate] time=$(date '+%F %T')"
     host_prepare_packages "$host" "$family" "$connectivity"
-    ssh_run "$host" "cd '${REMOTE_DIR}' && bash -n offline_tools_v14.sh lib/*.sh"
+    ssh_run "$host" "cd '${REMOTE_DIR}' && bash -n offline_tools_v1.sh lib/*.sh"
     run_menu_regression_if_possible "$host" "$connectivity"
     ssh_run "$host" "cd '${REMOTE_DIR}' && if ls logs/*.log >/dev/null 2>&1; then tail -n 120 logs/*.log; fi"
   } >"$out_file" 2>&1 || status="FAIL"

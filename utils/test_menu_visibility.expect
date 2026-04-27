@@ -7,7 +7,7 @@ if {$root eq ""} {
   exit 2
 }
 
-set script "$root/offline_tools_v14.sh"
+set script "$root/offline_tools_v1.sh"
 set out_file "$root/logs/menu_visibility_expect.out"
 
 file mkdir "$root/logs"

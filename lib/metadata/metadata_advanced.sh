@@ -1,15 +1,8 @@
 #!/bin/bash
 # =====================================================
-# 元数据高级功能模块 - metadata_advanced.sh
-# 包含select_and_install_package等高级交互函数
-# 注意：此文件会被动态追加到metadata.sh中
+# Metadata advanced module placeholder.
+# select_and_install_package remains in offline_tools_v1.sh for now because it
+# depends on several menu, metadata, and package-manager globals.
 # =====================================================
 
-# select_and_install_package函数定义将在这里
-# 由于该函数非常长（约300行），为保持模块化，暂时保留在offline_tools_v14.sh主脚本中
-# 或在后续迭代中进一步拆分
-
-# =============================================
-# 导出占位符（实际实现在主脚本中）
-# =============================================
-# TODO: 将select_and_install_package从offline_tools_v14.sh移到这里
+# TODO: Move select_and_install_package here after the shared state is reduced.

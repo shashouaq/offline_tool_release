@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "v14",
+    [string]$Version = "v1",
     [string]$OutputDir = "$(Split-Path -Parent $PSScriptRoot)\output"
 )
 
@@ -48,7 +48,7 @@ Linux download host when package collection is needed.
 Recommended use:
 1. Unzip this package.
 2. Copy the folder to a Linux host with network access to the target OS repo.
-3. Run: bash offline_tools_v14.sh
+3. Run: bash offline_tools_v1.sh
 
 Notes:
 - Do not store private SSH keys in this package.
@@ -59,7 +59,7 @@ Notes:
     if (Test-Path -LiteralPath $packagePath) {
         Remove-Item -LiteralPath $packagePath -Force
     }
-    Compress-Archive -LiteralPath (Join-Path $stageDir '*') -DestinationPath $packagePath -Force
+    Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $packagePath -Force
     Write-Host "Created $packagePath"
 } finally {
     if (Test-Path -LiteralPath $stageDir) {

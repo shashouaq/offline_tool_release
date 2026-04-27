@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# Offline Tools Platform v14.0
+# Offline Tools Platform v1.0
 # Main entry for target selection, download, bundle creation, and offline install.
 # =====================================================
 set -uo pipefail
@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 BASE_DIR="$SCRIPT_DIR"
 CONF_DIR="$BASE_DIR/conf"
 LIB_DIR="$BASE_DIR/lib"
-WORK_DIR="${OFFLINE_TOOLS_WORK_DIR:-/tmp/offline_tools_v14}"
+WORK_DIR="${OFFLINE_TOOLS_WORK_DIR:-/tmp/offline_tools_v1}"
 PKG_DIR="$WORK_DIR/packages"
 OUTPUT_DIR="$BASE_DIR/output"
 LOG_DIR="$BASE_DIR/logs"
@@ -28,7 +28,7 @@ ensure_tmp_capacity(){
     echo "[INFO] /tmp available space ${available_gb}GB is below ${required_gb}GB"
 
     if [[ "$(id -u 2>/dev/null || echo 1)" -ne 0 ]]; then
-        WORK_DIR="${OFFLINE_TOOLS_TMP_FALLBACK:-/var/tmp/offline_tools_v14}"
+        WORK_DIR="${OFFLINE_TOOLS_TMP_FALLBACK:-/var/tmp/offline_tools_v1}"
         PKG_DIR="$WORK_DIR/packages"
         echo "[INFO] Non-root mode: switch WORK_DIR to $WORK_DIR"
         return 0
@@ -41,7 +41,7 @@ ensure_tmp_capacity(){
         fi
     fi
 
-    local mount_dir="${OFFLINE_TOOLS_TMPFS_DIR:-/tmp/offline_tools_v14_tmpfs}"
+    local mount_dir="${OFFLINE_TOOLS_TMPFS_DIR:-/tmp/offline_tools_v1_tmpfs}"
     mkdir -p "$mount_dir"
     if ! mountpoint -q "$mount_dir"; then
         mount -t tmpfs -o "size=${required_gb}G,mode=1777" tmpfs "$mount_dir" 2>/dev/null || {
@@ -127,7 +127,7 @@ source "$LIB_DIR/installer.sh" || { echo "ERROR: failed to load installer.sh"; e
 source "$LIB_DIR/utilities.sh" || { echo "ERROR: failed to load utilities.sh"; exit 1; }
 source "$LIB_DIR/mirror_cache.sh" || { echo "ERROR: failed to load mirror_cache.sh"; exit 1; }
 
-# Optional v14 modules.
+# Optional v1 modules.
 source "$LIB_DIR/signature.sh" 2>/dev/null || _simple_log "[WARN] failed to load signature.sh"
 source "$LIB_DIR/incremental.sh" 2>/dev/null || _simple_log "[WARN] failed to load incremental.sh"
 source "$LIB_DIR/dependency_tree.sh" 2>/dev/null || _simple_log "[WARN] failed to load dependency_tree.sh"
@@ -257,7 +257,7 @@ handle_cli_args(){
             exit 0
             ;;
         --version|version)
-            echo "offline tools v14"
+            echo "offline tools v1"
             exit 0
             ;;
         --help|-h|help)

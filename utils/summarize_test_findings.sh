@@ -30,7 +30,7 @@ tmp="$(mktemp)"
   echo "  - OS: mixed"
   echo "  - Arch: mixed"
   echo "  - Online/Offline: mixed"
-  echo "- Build/Script version: offline_tools_v14.sh"
+  echo "- Build/Script version: offline_tools_v1.sh"
   echo "- Test scope: auto summary from logs"
   echo "- Result summary:"
 } >"$tmp"
@@ -68,11 +68,10 @@ done
   for f in "${FILES[@]}"; do
     echo "  - Path: ${f#${ROOT_DIR}/}"
     echo "  - Key lines:"
-    grep -Ei 'dep_check/menu_render|Environment self-check|环境自检|select/target_system|result=ok|FAIL|failed|invalid_input|ERROR' "$f" | tail -n 6 | sed 's/^/    - /' || true
+    grep -Ei 'dep_check/menu_render|Environment self-check|鐜鑷|select/target_system|result=ok|FAIL|failed|invalid_input|ERROR' "$f" | tail -n 6 | sed 's/^/    - /' || true
   done
 } >>"$tmp"
 
 cat "$tmp" >> "$OUT_FILE"
 rm -f "$tmp"
 echo "[summary] appended round ${ROUND_ID} -> ${OUT_FILE}"
-

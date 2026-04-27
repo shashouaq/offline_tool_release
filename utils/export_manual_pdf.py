@@ -194,7 +194,7 @@ def main():
         rightMargin=40,
         topMargin=40,
         bottomMargin=36,
-        title="离线工具平台 v14.0 使用说明书",
+        title="离线工具平台 v1.0 使用说明书",
         author="Codex",
     )
     story = render_markdown(md_text, styles)

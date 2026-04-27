@@ -19,7 +19,7 @@ Use this file to merge key decisions across all conversations.
 ### ADR-20260424-01: Merge Session 019db7ca Into Project Baseline
 - Date: 2026-04-24
 - Owner: codex + wei.qiao
-- Scope: offline_tools_v14 workflow and remote validation path
+- Scope: offline_tools_v1 workflow and remote validation path
 - Context:
   - Session `019db7ca-9731-7e43-b07a-3048ce515631` defined the project target as end-to-end `download -> bundle -> offline install`.
   - The same session established SSH-based remote validation as acceptable for real Linux package-manager checks.
@@ -37,7 +37,7 @@ Use this file to merge key decisions across all conversations.
 - Tradeoffs:
   - remote validation increases setup cost, but materially improves confidence for package-manager behavior.
 - Impacted files/modules:
-  - `offline_tools_v14.sh`
+  - `offline_tools_v1.sh`
   - `lib/security.sh`
   - `lib/config.sh`
   - `lib/metadata/metadata_install.sh`
@@ -53,7 +53,7 @@ Use this file to merge key decisions across all conversations.
 - Owner: codex + wei.qiao
 - Scope: future workflow, validation, packaging, install, and regression work for offline tool release
 - Context:
-  - User reorganized business requirements under `要求/`.
+  - User reorganized business requirements under `瑕佹眰/`.
   - Repeated iterations showed drift risk when decisions lived only in conversation.
 - Decision:
   - Treat `docs/project-memory.md` as the project-local durable baseline.
@@ -74,5 +74,5 @@ Use this file to merge key decisions across all conversations.
 - Rollback plan:
   - revert doc/skill/script additions if a different project governance model is chosen.
 - Validation evidence (logs/tests):
-  - requirement source files in `要求/`
+  - requirement source files in `瑕佹眰/`
   - local quality gate after integration

@@ -62,7 +62,7 @@ run_one_host(){
     echo "[all-hosts] host=${host} label=${label} family=${family}"
     echo "[all-hosts] time=$(date '+%F %T')"
     prepare_remote "$host" "$family"
-    run_remote "$host" "cd '${REMOTE_BASE}' && chmod +x ./utils/run_menu_regression.sh ./offline_tools_v14.sh && ./utils/run_menu_regression.sh"
+    run_remote "$host" "cd '${REMOTE_BASE}' && chmod +x ./utils/run_menu_regression.sh ./offline_tools_v1.sh && ./utils/run_menu_regression.sh"
     run_remote "$host" "cd '${REMOTE_BASE}' && if ls logs/*.log >/dev/null 2>&1; then tail -n 200 logs/*.log; fi"
   } >"$out_file" 2>&1 || status="FAIL"
 
@@ -92,7 +92,7 @@ append_summary(){
     echo "  - OS: mixed (4 hosts)"
     echo "  - Arch: mixed"
     echo "  - Online/Offline: mixed"
-    echo "- Build/Script version: offline_tools_v14.sh"
+    echo "- Build/Script version: offline_tools_v1.sh"
     echo "- Test scope: remote menu regression all hosts"
     echo "- Result summary:"
     while IFS=$'\t' read -r label host family status menu_hits log_file; do

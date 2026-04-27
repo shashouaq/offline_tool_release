@@ -31,7 +31,7 @@ Use this file to collect each test round in one place.
   - OS: mixed
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh
+- Build/Script version: offline_tools_v1.sh
 - Test scope: auto summary from logs
 - Result summary:
   - logs_20260424.log: menu_hits=0, select_ok=0, err_hits=0
@@ -60,7 +60,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL Bash for syntax/tests; Linux remote planned for full run
   - Arch: mixed (target-dependent)
   - Online/Offline: mixed topology required
-- Build/Script version: offline_tools_v14.sh (session baseline)
+- Build/Script version: offline_tools_v1.sh (session baseline)
 - Test scope: baseline merge from historical session into current thread
 - Result summary:
   - Passed: baseline requirements extracted and merged into docs
@@ -84,7 +84,7 @@ Use this file to collect each test round in one place.
   - OS: 4 hosts (RPM online, DEB online, RPM offline, DEB offline)
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + utils/run_autonomous_validation.sh
+- Build/Script version: offline_tools_v1.sh + utils/run_autonomous_validation.sh
 - Test scope: local quality gate + remote sync + menu regression/autonomous validation
 - Result summary:
   - rpm_online(172.18.10.61): PASS, menu_hits=5
@@ -112,7 +112,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + refreshed package/metadata modules + user manual export
+- Build/Script version: offline_tools_v1.sh + refreshed package/metadata modules + user manual export
 - Test scope: package-manager/metadata text cleanup, PDF manual export, autonomous validation rerun
 - Result summary:
   - Local syntax gate: PASS
@@ -145,7 +145,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + refreshed metadata list/install/utility modules
+- Build/Script version: offline_tools_v1.sh + refreshed metadata list/install/utility modules
 - Test scope: manifest-driven bundle listing smoke + quality gate + remote autonomous validation
 - Result summary:
   - Local metadata list smoke: PASS
@@ -175,7 +175,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + refreshed config/tool selection modules
+- Build/Script version: offline_tools_v1.sh + refreshed config/tool selection modules
 - Test scope: config module cleanup, bilingual user-facing messages, group/package mode filter smoke, remote autonomous validation
 - Result summary:
   - Local syntax gate: PASS
@@ -206,7 +206,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + cleaned tool catalog
+- Build/Script version: offline_tools_v1.sh + cleaned tool catalog
 - Test scope: `tools.conf` encoding cleanup, tool description loading smoke, quality gate, remote autonomous validation
 - Result summary:
   - Local tool description smoke: PASS
@@ -237,7 +237,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + cleaned self-check/workflow text paths
+- Build/Script version: offline_tools_v1.sh + cleaned self-check/workflow text paths
 - Test scope: remove remaining `[CN]` placeholder text from self-check and workflow menus, local quality gate, remote autonomous validation
 - Result summary:
   - Local placeholder scan: PASS
@@ -268,7 +268,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + cleaned main entry script
+- Build/Script version: offline_tools_v1.sh + cleaned main entry script
 - Test scope: remove remaining mojibake from the main entry script, local quality gate, workspace mojibake scan, remote autonomous validation
 - Result summary:
   - Local mojibake scan: PASS
@@ -279,12 +279,12 @@ Use this file to collect each test round in one place.
   - rpm_offline(172.18.10.64): PASS
   - deb_offline(172.18.10.65): PASS
 - Failures:
-  1. Symptom: `offline_tools_v14.sh` still contained encoding-damaged comment blocks and inline notes
-  2. Repro steps: scan shell sources for mojibake patterns, then inspect `offline_tools_v14.sh`
+  1. Symptom: `offline_tools_v1.sh` still contained encoding-damaged comment blocks and inline notes
+  2. Repro steps: scan shell sources for mojibake patterns, then inspect `offline_tools_v1.sh`
   3. Expected: the main entry script should be readable and maintainable without changing runtime behavior
   4. Actual: the file still had legacy comment corruption even though functional paths were already stabilized
   5. Root cause: earlier fixes prioritized runtime logic and user-facing text, leaving the entry script comments untouched
-  6. Fix: rewrote `offline_tools_v14.sh` as a clean UTF-8/LF file with equivalent logic and readable comments
+  6. Fix: rewrote `offline_tools_v1.sh` as a clean UTF-8/LF file with equivalent logic and readable comments
   7. Re-test result: mojibake scan returned empty and remote autonomous validation passed on all 4 hosts
 - Logs:
   - Path: logs/autonomous_validation/results_20260425_163259.tsv
@@ -299,7 +299,7 @@ Use this file to collect each test round in one place.
   - OS: Windows host + WSL + 4 remote validation hosts
   - Arch: mixed
   - Online/Offline: mixed
-- Build/Script version: offline_tools_v14.sh + cleaned security/display structure
+- Build/Script version: offline_tools_v1.sh + cleaned security/display structure
 - Test scope: remove duplicate function-name collisions, clean `security.sh`, local structure scan, quality gate, remote autonomous validation
 - Result summary:
   - Local duplicate-function scan: PASS

@@ -32,7 +32,7 @@ Checks included:
 - CRLF detection for `.sh`
 - optional `shellcheck`
 - optional `shfmt -d`
-- optional `./offline_tools_v14.sh --version` smoke
+- optional `./offline_tools_v1.sh --version` smoke
 
 ## 4) Menu visibility regression
 - Scripts:

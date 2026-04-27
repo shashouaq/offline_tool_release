@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 KEY_PATH="${1:-/mnt/c/Users/wei.qiao/Hkzy@8000}"
-REMOTE_DIR="${2:-/root/offline_tool_release_20260424}"
+REMOTE_DIR="${2:-/root/offline_tool_release_v1}"
 TMP_KEY="$(mktemp /tmp/offline_sync_key.XXXXXX)"
 cp "$KEY_PATH" "$TMP_KEY"
 chmod 600 "$TMP_KEY"
@@ -27,7 +27,7 @@ cd "$ROOT_DIR"
 for host in "${HOSTS[@]}"; do
   echo "[sync] -> $host:$REMOTE_DIR"
   tar -czf - \
-    offline_tools_v14.sh \
+    offline_tools_v1.sh \
     conf \
     lib \
     utils \

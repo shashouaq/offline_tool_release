@@ -50,13 +50,20 @@ else
   echo "[quality] shfmt: SKIP (not installed)"
 fi
 
-if [[ -x "./offline_tools_v14.sh" ]]; then
-  echo "[quality] smoke: ./offline_tools_v14.sh --version"
-  ./offline_tools_v14.sh --version >/dev/null
+if [[ -x "./offline_tools_v1.sh" ]]; then
+  echo "[quality] smoke: ./offline_tools_v1.sh --version"
+  ./offline_tools_v1.sh --version >/dev/null
   echo "[quality] smoke: PASS"
 else
-  echo "[quality] smoke: SKIP (offline_tools_v14.sh not executable)"
+  echo "[quality] smoke: SKIP (offline_tools_v1.sh not executable)"
+fi
+
+if [[ "${OFFLINE_TOOLS_CHECK_SOURCES:-0}" == "1" ]]; then
+  echo "[quality] source check"
+  bash ./utils/check_sources.sh
+  echo "[quality] source check: PASS"
+else
+  echo "[quality] source check: SKIP (set OFFLINE_TOOLS_CHECK_SOURCES=1 to enable)"
 fi
 
 echo "[quality] ALL CHECKS DONE"
-

@@ -14,7 +14,7 @@ if ! command -v expect >/dev/null 2>&1; then
   exit 2
 fi
 
-chmod +x ./offline_tools_v14.sh ./utils/test_menu_visibility.expect
+chmod +x ./offline_tools_v1.sh ./utils/test_menu_visibility.expect
 
 ./utils/test_menu_visibility.expect "$ROOT_DIR"
 

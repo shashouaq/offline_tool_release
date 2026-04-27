@@ -15,7 +15,7 @@ Current repo focus:
 
 Main entry:
 
-- `offline_tools_v14.sh`
+- `offline_tools_v1.sh`
 
 Key directories:
 

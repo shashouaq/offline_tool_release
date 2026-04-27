@@ -4,6 +4,7 @@
 declare -a REPOS=()
 PKG_TYPE=""
 RELEASE_VER=""
+SUPPORTED_ARCHES=""
 SKIP_SSL="${SKIP_SSL:-0}"
 
 if ! declare -F log >/dev/null 2>&1; then
@@ -50,6 +51,7 @@ load_os_config(){
     REPOS=()
     PKG_TYPE=""
     RELEASE_VER=""
+    SUPPORTED_ARCHES=""
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         line=$(_config_trim "$line")
@@ -70,6 +72,8 @@ load_os_config(){
             PKG_TYPE=$(_config_trim "${BASH_REMATCH[1]}")
         elif [[ "$line" =~ ^RELEASEVER=(.+)$ ]]; then
             RELEASE_VER=$(_config_trim "${BASH_REMATCH[1]}")
+        elif [[ "$line" =~ ^SUPPORTED_ARCHES=(.+)$ ]]; then
+            SUPPORTED_ARCHES=$(_config_trim "${BASH_REMATCH[1]}")
         elif [[ "$line" =~ \"([^\"]+)\" ]]; then
             REPOS+=("${BASH_REMATCH[1]}")
         fi
@@ -79,7 +83,7 @@ load_os_config(){
         _config_error \
             "[$os_type] 未找到任何仓库配置" \
             "[$os_type] no repositories configured" \
-            "请检查 os_sources.conf 中对应系统段落" \
+            "请检查 os_sources.conf 中对应的系统段" \
             "Check the matching system section in os_sources.conf"
         return 1
     fi
@@ -93,14 +97,33 @@ load_os_config(){
         return 1
     fi
 
-    log "[config] loaded os config: os=$os_type repos=${#REPOS[@]} pkg_type=$PKG_TYPE release=$RELEASE_VER"
+    if [[ -n "${SUPPORTED_ARCHES:-}" && " $SUPPORTED_ARCHES " != *" ${TARGET_ARCH:-} "* ]]; then
+        _config_error \
+            "[$os_type] 不支持架构 ${TARGET_ARCH:-unknown}，支持架构: $SUPPORTED_ARCHES" \
+            "[$os_type] unsupported architecture ${TARGET_ARCH:-unknown}; supported: $SUPPORTED_ARCHES" \
+            "请重新选择目标系统或架构" \
+            "Select a compatible OS and architecture"
+        return 1
+    fi
+
+    log "[config] loaded os config: os=$os_type repos=${#REPOS[@]} pkg_type=$PKG_TYPE release=$RELEASE_VER arches=${SUPPORTED_ARCHES:-all}"
     return 0
 }
 
 check_repo_availability(){
     local url="$1"
     local timeout="${2:-5}"
-    curl -sk --max-time "$timeout" -I "$url" >/dev/null 2>&1
+    local probe="$url"
+
+    if [[ "${PKG_TYPE:-}" == "rpm" ]]; then
+        probe="${url%/}/repodata/repomd.xml"
+    elif [[ "${PKG_TYPE:-}" == "deb" && -n "${RELEASE_VER:-}" ]]; then
+        probe="${url%/}/dists/${RELEASE_VER}/InRelease"
+        curl -fsSLk --max-time "$timeout" -o /dev/null "$probe" >/dev/null 2>&1 && return 0
+        probe="${url%/}/dists/${RELEASE_VER}/Release"
+    fi
+
+    curl -fsSLk --max-time "$timeout" -o /dev/null "$probe" >/dev/null 2>&1
 }
 
 filter_reachable_repos(){
@@ -341,12 +364,11 @@ load_tools_config(){
     if [[ ! -f "$conf_file" ]]; then
         _config_error \
             "工具配置文件不存在: $conf_file" \
-            "Tools config not found: $conf_file" \
+            "Tool config not found: $conf_file" \
             "请检查 conf/tools.conf" \
             "Check conf/tools.conf"
         return 1
     fi
-
     while IFS='|' read -r tool_id desc rpm_pkgs deb_pkgs; do
         tool_id=$(_config_trim "$tool_id")
         desc=$(_config_trim "$desc")
@@ -381,9 +403,9 @@ load_tools_config(){
 
     if [[ ${#tools[@]} -eq 0 ]]; then
         _config_error \
-            "当前模式下没有可用工具" \
+            "閻熸粎澧楅幐鍛婃櫠閻樺弬鐔煎灳瀹曞洨顢呮繛鎴炴尭椤戝棝鎯€閸涙潙瀚夊璺猴工鐠佹煡鏌ｉ～顒€濡煎ù鍏煎姍瀹? \
             "No tools available for current mode" \
-            "请检查 tools.conf 或切换工具选择模式" \
+            "闁荤姴娲弨閬嵥夐崨鏉戣摕?tools.conf 闂佺懓鐡ㄩ悧鏇㈠垂韫囨稑绠查柕蹇曞С缁憋綁鏌涜箛鏇炲幋闁逞屽墮椤︽壆鈧哎鍔岃灒闁炽儱纾涵鈧? \
             "Check tools.conf or switch tool selection mode"
         return 1
     fi
@@ -443,7 +465,7 @@ get_selected_tool_packages(){
 
 get_kernel_dep_description(){
     case "$1" in
-        make) echo "$(lang_pick "GNU make 编译工具" "GNU make build tool")" ;;
+        make) echo "$(lang_pick "GNU make 构建工具" "GNU make build tool")" ;;
         dkms) echo "$(lang_pick "动态内核模块支持" "Dynamic Kernel Module Support")" ;;
         gcc) echo "$(lang_pick "GNU C 编译器" "GNU C compiler")" ;;
         kernel-headers) echo "$(lang_pick "内核头文件" "Kernel headers")" ;;
@@ -452,7 +474,7 @@ get_kernel_dep_description(){
         kernel-tlinux4-headers) echo "$(lang_pick "Tlinux4 内核头文件" "Tlinux4 kernel headers")" ;;
         elfutils-libelf-devel) echo "$(lang_pick "ELF 开发库" "ELF development library")" ;;
         linux-headers) echo "$(lang_pick "Linux 内核头文件" "Linux kernel headers")" ;;
-        linux-libc-dev) echo "$(lang_pick "Linux libc 头文件" "Linux libc development headers")" ;;
+        linux-libc-dev) echo "$(lang_pick "Linux libc 开发头文件" "Linux libc development headers")" ;;
         *) echo "$(lang_pick "内核依赖" "Kernel dependency")" ;;
     esac
 }

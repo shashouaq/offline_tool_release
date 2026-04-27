@@ -11,7 +11,7 @@ select_os_arch(){
     local work_dir="${2:-$WORK_DIR}"
 
     log_action_begin "select" "target_system"
-    print_header "Offline Tools v14.0"
+    print_header "Offline Tools v1.0"
 
     echo "$(t RPM_SYSTEMS_TITLE)"
     echo "  1) $(t OS_OPENEULER22)"
