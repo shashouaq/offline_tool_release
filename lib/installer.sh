@@ -102,7 +102,7 @@ detect_current_pkg_type(){
 load_tarball_manifest_summary(){
     local tarball="$1"
     reset_bundle_manifest
-    tarball_has_manifest "$tarball" || return 1
+    ensure_bundle_header "$tarball" 2>/dev/null || true
     BUNDLE_TARGET_OS=$(tarball_manifest_value "$tarball" "target_os")
     BUNDLE_TARGET_ARCH=$(tarball_manifest_value "$tarball" "target_arch")
     BUNDLE_PKG_TYPE=$(tarball_manifest_value "$tarball" "pkg_type")
@@ -454,7 +454,10 @@ show_package_install_menu(){
 
     load_tarball_manifest_summary "$tarball" || true
     local quick_pkg_count=0
-    quick_pkg_count=$(tar -tJf "$tarball" 2>/dev/null | awk '/\.rpm$|\.deb$/{c++} END{print c+0}')
+    quick_pkg_count="${BUNDLE_PACKAGE_COUNT:-0}"
+    if [[ "${quick_pkg_count:-0}" -eq 0 ]]; then
+        quick_pkg_count=$(tar -tJf "$tarball" 2>/dev/null | awk '/\.rpm$|\.deb$/{c++} END{print c+0}')
+    fi
     if [[ -n "${BUNDLE_PACKAGE_COUNT:-}" && "${BUNDLE_PACKAGE_COUNT:-0}" -eq 0 && "$quick_pkg_count" -gt 0 ]]; then
         BUNDLE_PACKAGE_COUNT="$quick_pkg_count"
     fi

@@ -49,7 +49,11 @@ filter_new_tools_by_existing(){
     done
     SELECTED_TOOLS=("${out_new[@]}")
     if [[ ${#out_skipped[@]} -gt 0 ]]; then
-        print_info "$(lang_pick "已存在工具已跳过" "Existing tools skipped"): ${#out_skipped[@]}"
+        print_warning "$(lang_pick "当前选择包组在匹配的离线包中已存在，将跳过重复下载" "Selected tool groups already exist in the matching offline bundle; duplicate download skipped")"
+        if [[ -n "$EXISTING_PACKAGE_PATH" ]]; then
+            echo "  $(t CONFIG_TARGET): ${TARGET_OS:-unknown}_${TARGET_ARCH:-unknown}"
+            echo "  $(lang_pick "离线包" "Bundle"): $EXISTING_PACKAGE_PATH"
+        fi
         printf "  - %s\n" "${out_skipped[@]}"
         log_event "INFO" "download" "skip_existing_tools" "skip tools already in existing offline package" "count=${#out_skipped[@]}" "tools=$(IFS=','; echo "${out_skipped[*]}")"
     fi
@@ -196,6 +200,7 @@ run_download(){
     if [[ -f "$STATIC_TARBALL" ]]; then
         merge_mode="merge"
         local existing_tools_csv=""
+        ensure_bundle_header "$STATIC_TARBALL" 2>/dev/null || true
         existing_tools_csv=$(get_package_tools "$TARGET_OS" "$TARGET_ARCH" 2>/dev/null || true)
         set_existing_tools_context "$output_dir" "$TARGET_OS" "$TARGET_ARCH" "$existing_tools_csv"
         if [[ ${#EXISTING_PACKAGE_TOOLS[@]} -gt 0 ]]; then

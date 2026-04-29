@@ -2,6 +2,7 @@
 # Bundle manifest helpers. manifest.json is the trusted install contract.
 
 MANIFEST_FILE=""
+BUNDLE_HEADER_SUFFIX=".header"
 
 init_manifest(){
     local work_dir="$1"
@@ -162,10 +163,90 @@ manifest_number_from_stream(){
     sed -n -E "s/^[[:space:]]*\"${key}\":[[:space:]]*([0-9]+).*/\\1/p" | head -n 1
 }
 
+bundle_header_file(){
+    local tarball="$1"
+    echo "${tarball}${BUNDLE_HEADER_SUFFIX}"
+}
+
+write_bundle_header(){
+    local tarball="$1"
+    local target_os="$2"
+    local target_arch="$3"
+    local pkg_type="$4"
+    local release_ver="$5"
+    local tools_csv="$6"
+    local kernel_deps_csv="$7"
+    local pkg_count="$8"
+    local header_file size mtime
+    [[ -n "$tarball" ]] || return 1
+    header_file=$(bundle_header_file "$tarball")
+    size=$(du -sh "$tarball" 2>/dev/null | cut -f1)
+    mtime=$(stat -c '%Y' "$tarball" 2>/dev/null || stat -f '%m' "$tarball" 2>/dev/null || echo "")
+    cat > "$header_file" <<EOF
+FORMAT=offline-tools-header-v1
+TARGET_OS="$target_os"
+TARGET_ARCH="$target_arch"
+PKG_TYPE="$pkg_type"
+RELEASE_VER="$release_ver"
+TOOLS="$tools_csv"
+KERNEL_DEPS="$kernel_deps_csv"
+PACKAGE_COUNT="$pkg_count"
+PACKAGE_SIZE="$size"
+TARBALL_MTIME="$mtime"
+EOF
+}
+
+read_bundle_header_value(){
+    local tarball="$1"
+    local key="$2"
+    local header_file value
+    header_file=$(bundle_header_file "$tarball")
+    [[ -f "$header_file" ]] || return 1
+    value=$(sed -n -E "s/^${key}=\"?([^\"]*)\"?$/\\1/p" "$header_file" | head -n1)
+    [[ -n "$value" ]] || return 1
+    echo "$value"
+}
+
+bundle_header_is_current(){
+    local tarball="$1"
+    local header_file header_mtime tar_mtime
+    header_file=$(bundle_header_file "$tarball")
+    [[ -f "$tarball" && -f "$header_file" ]] || return 1
+    header_mtime=$(read_bundle_header_value "$tarball" "TARBALL_MTIME" 2>/dev/null || true)
+    tar_mtime=$(stat -c '%Y' "$tarball" 2>/dev/null || stat -f '%m' "$tarball" 2>/dev/null || echo "")
+    [[ -n "$header_mtime" && -n "$tar_mtime" && "$header_mtime" == "$tar_mtime" ]]
+}
+
+ensure_bundle_header(){
+    local tarball="$1"
+    local member manifest_tmp target_os target_arch pkg_type release_ver pkg_count tools_csv kernel_deps_csv
+    bundle_header_is_current "$tarball" && return 0
+    member=$(detect_manifest_member_in_tarball "$tarball" 2>/dev/null || true)
+    [[ -n "$member" ]] || return 1
+    manifest_tmp=$(mktemp /tmp/offline_manifest_header_XXXXXX)
+    tar -xJOf "$tarball" "$member" > "$manifest_tmp" 2>/dev/null || { rm -f "$manifest_tmp"; return 1; }
+    target_os=$(file_manifest_value "$manifest_tmp" "target_os" 2>/dev/null || true)
+    target_arch=$(file_manifest_value "$manifest_tmp" "target_arch" 2>/dev/null || true)
+    pkg_type=$(file_manifest_value "$manifest_tmp" "pkg_type" 2>/dev/null || true)
+    release_ver=$(file_manifest_value "$manifest_tmp" "release_ver" 2>/dev/null || true)
+    pkg_count=$(file_manifest_number "$manifest_tmp" "package_count" 2>/dev/null || true)
+    tools_csv=$(manifest_tools_from_file "$manifest_tmp" 2>/dev/null | paste -sd, -)
+    kernel_deps_csv=""
+    rm -f "$manifest_tmp"
+    [[ -n "$target_os" && -n "$target_arch" && -n "$pkg_type" ]] || return 1
+    write_bundle_header "$tarball" "$target_os" "$target_arch" "$pkg_type" "$release_ver" "$tools_csv" "$kernel_deps_csv" "${pkg_count:-0}"
+}
+
 tarball_manifest_value(){
     local tarball="$1"
     local key="$2"
     local member
+    case "$key" in
+        target_os) read_bundle_header_value "$tarball" "TARGET_OS" 2>/dev/null && return 0 ;;
+        target_arch) read_bundle_header_value "$tarball" "TARGET_ARCH" 2>/dev/null && return 0 ;;
+        pkg_type) read_bundle_header_value "$tarball" "PKG_TYPE" 2>/dev/null && return 0 ;;
+        release_ver) read_bundle_header_value "$tarball" "RELEASE_VER" 2>/dev/null && return 0 ;;
+    esac
     member=$(detect_manifest_member_in_tarball "$tarball")
     [[ -n "$member" ]] || return 1
     tar -xJOf "$tarball" "$member" 2>/dev/null | manifest_value_from_stream "$key"
@@ -175,6 +256,9 @@ tarball_manifest_number(){
     local tarball="$1"
     local key="$2"
     local member
+    case "$key" in
+        package_count) read_bundle_header_value "$tarball" "PACKAGE_COUNT" 2>/dev/null && return 0 ;;
+    esac
     member=$(detect_manifest_member_in_tarball "$tarball")
     [[ -n "$member" ]] || return 1
     tar -xJOf "$tarball" "$member" 2>/dev/null | manifest_number_from_stream "$key"
@@ -256,6 +340,11 @@ export -f write_manifest_json
 export -f sync_manifest
 export -f detect_manifest_member_in_tarball
 export -f tarball_has_manifest
+export -f bundle_header_file
+export -f write_bundle_header
+export -f read_bundle_header_value
+export -f bundle_header_is_current
+export -f ensure_bundle_header
 export -f tarball_manifest_value
 export -f tarball_manifest_number
 export -f file_manifest_value

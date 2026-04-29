@@ -80,6 +80,7 @@ merge_into_tarball(){
         sync_manifest "$selected_tools_str" "$kernel_deps_str" "$target_arch" "$target_os" "${PKG_TYPE:-unknown}" "${RELEASE_VER:-unknown}" "$merge_dir/packages" "$merge_dir/manifest.json" || return 1
         _run_tar_with_progress "$tarball" "$merge_dir" "." "$(_archive_msg '打包中' 'Packing')"
         tar_rc=$?
+        pkg_count=$(find "$merge_dir/packages" -type f \( -name "*.rpm" -o -name "*.deb" \) 2>/dev/null | wc -l)
         rm -rf -- "$merge_dir"
         [[ $tar_rc -ne 0 ]] && return $tar_rc
         update_package_metadata "$target_os" "$target_arch" "$selected_tools_str" "$kernel_deps_str"
@@ -92,6 +93,7 @@ merge_into_tarball(){
     fi
 
     generate_checksum_file "$tarball" || return 1
+    write_bundle_header "$tarball" "$target_os" "$target_arch" "${PKG_TYPE:-unknown}" "${RELEASE_VER:-unknown}" "$selected_tools_str" "$kernel_deps_str" "$pkg_count" || true
     size=$(du -sh "$tarball" 2>/dev/null | cut -f1)
     show_status "ok" "$(_archive_msg '离线包文件' 'Offline package'): $tarball"
     show_status "ok" "$(_archive_msg '包大小' 'Package size'): $size"

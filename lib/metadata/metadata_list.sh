@@ -6,6 +6,11 @@
 _bundle_tools_count_from_tarball(){
     local tarball="$1"
     local count
+    ensure_bundle_header "$tarball" 2>/dev/null || true
+    if read_bundle_header_value "$tarball" "TOOLS" >/dev/null 2>&1; then
+        read_bundle_header_value "$tarball" "TOOLS" | awk -F',' '{if($0=="") print 0; else print NF}'
+        return 0
+    fi
     count=$(tar -xJOf "$tarball" "$(detect_manifest_member_in_tarball "$tarball")" 2>/dev/null \
         | grep -oE '"tools"[[:space:]]*:[[:space:]]*\[[^]]*\]' \
         | grep -oE '"[^"]+"' \
@@ -16,6 +21,11 @@ _bundle_tools_count_from_tarball(){
 
 _bundle_tools_from_tarball(){
     local tarball="$1"
+    ensure_bundle_header "$tarball" 2>/dev/null || true
+    if read_bundle_header_value "$tarball" "TOOLS" >/dev/null 2>&1; then
+        read_bundle_header_value "$tarball" "TOOLS" | tr ',' '\n' | sed '/^[[:space:]]*$/d'
+        return 0
+    fi
     tar -xJOf "$tarball" "$(detect_manifest_member_in_tarball "$tarball")" 2>/dev/null \
         | grep -oE '"tools"[[:space:]]*:[[:space:]]*\[[^]]*\]' \
         | grep -oE '"[^"]+"' \
@@ -29,6 +39,7 @@ list_available_packages(){
 
     local tarball os arch size tool_count
     while IFS= read -r -d '' tarball; do
+        ensure_bundle_header "$tarball" 2>/dev/null || true
         os=$(tarball_manifest_value "$tarball" "target_os" 2>/dev/null || true)
         arch=$(tarball_manifest_value "$tarball" "target_arch" 2>/dev/null || true)
         size=$(du -sh "$tarball" 2>/dev/null | cut -f1)
@@ -60,6 +71,7 @@ find_compatible_packages(){
     echo ""
     print_section "$(t INSTALL_COMPATIBLE) ($cur_os / $cur_arch)"
     while IFS= read -r -d '' tarball; do
+        ensure_bundle_header "$tarball" 2>/dev/null || true
         status=$(get_bundle_compatibility "$tarball" "$cur_os" "$cur_arch" "$cur_pkg_type")
         [[ "$status" == "exact" || "$status" == "compatible" ]] || continue
         found=$((found + 1))
@@ -87,6 +99,7 @@ find_compatible_packages_silent(){
 
     local count=0 tarball status
     while IFS= read -r -d '' tarball; do
+        ensure_bundle_header "$tarball" 2>/dev/null || true
         status=$(get_bundle_compatibility "$tarball" "$os" "$arch" "$current_pkg_type")
         [[ "$status" == "exact" || "$status" == "compatible" ]] && count=$((count + 1))
     done < <(find "$OUTPUT_DIR" -maxdepth 1 -name "offline_*.tar.xz" ! -name "*.sha256" -print0 2>/dev/null | sort -z)
@@ -99,6 +112,7 @@ list_all_packages_with_details(){
     print_section "$(t INSTALL_SELECT_PACKAGE)"
     local found=0 tarball
     while IFS= read -r -d '' tarball; do
+        ensure_bundle_header "$tarball" 2>/dev/null || true
         found=$((found + 1))
         local os arch rel pkg_type pkg_count size
         os=$(tarball_manifest_value "$tarball" "target_os" 2>/dev/null || true)

@@ -103,7 +103,14 @@ get_package_tools(){
     local arch="$2"
     local meta_file
     meta_file=$(get_metadata_file "$os" "$arch")
-    [[ -f "$meta_file" ]] || return 1
+    if [[ ! -f "$meta_file" ]]; then
+        local tarball="$OUTPUT_DIR/offline_${os}_${arch}_merged.tar.xz"
+        if [[ -f "$tarball" ]]; then
+            ensure_bundle_header "$tarball" 2>/dev/null || true
+            read_bundle_header_value "$tarball" "TOOLS" 2>/dev/null && return 0
+        fi
+        return 1
+    fi
 
     local TOOLS=""
     while IFS='=' read -r key value; do
@@ -112,7 +119,16 @@ get_package_tools(){
         value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
         [[ "$key" == "TOOLS" ]] && TOOLS="$value" && break
     done < "$meta_file"
-    echo "$TOOLS"
+    if [[ -n "$TOOLS" ]]; then
+        echo "$TOOLS"
+        return 0
+    fi
+    local tarball="$OUTPUT_DIR/offline_${os}_${arch}_merged.tar.xz"
+    if [[ -f "$tarball" ]]; then
+        ensure_bundle_header "$tarball" 2>/dev/null || true
+        read_bundle_header_value "$tarball" "TOOLS" 2>/dev/null && return 0
+    fi
+    return 1
 }
 
 get_package_kernel_deps(){
