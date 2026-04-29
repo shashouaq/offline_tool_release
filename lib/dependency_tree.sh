@@ -64,7 +64,7 @@ resolve_single_rpm_dep(){
     direct_deps=$(dnf repoquery \
         --config="$repo_file" \
         --disablerepo='*' \
-        --enablerepo='offline-temp' \
+        --enablerepo="$(offline_temp_repo_selector)" \
         --releasever="$release_ver" \
         --requires \
         --resolve \
@@ -130,7 +130,7 @@ expand_package_group(){
         dnf groupinfo \
             --config="$repo_file" \
             --disablerepo='*' \
-            --enablerepo='offline-temp' \
+                --enablerepo="$(offline_temp_repo_selector)" \
             --releasever="$release_ver" \
             "$group_name" 2>/dev/null | grep -E "^\s+[a-zA-Z]" | awk '{print $1}' | sort -u
     elif [[ "$pattern" == *"*"* ]] || [[ "$pattern" == *"?"* ]]; then
@@ -138,7 +138,7 @@ expand_package_group(){
         dnf search \
             --config="$repo_file" \
             --disablerepo='*' \
-            --enablerepo='offline-temp' \
+                --enablerepo="$(offline_temp_repo_selector)" \
             --releasever="$release_ver" \
             "$pattern" 2>/dev/null | grep -E "^[a-zA-Z0-9._-]+\." | awk -F. '{print $1}' | sort -u
     else
@@ -197,7 +197,7 @@ _visualize_rpm_tree(){
     deps=$(dnf repoquery \
         --config="$repo_file" \
         --disablerepo='*' \
-        --enablerepo='offline-temp' \
+        --enablerepo="$(offline_temp_repo_selector)" \
         --releasever="$release_ver" \
         --requires \
         "$package" 2>/dev/null | head -20 | grep -E '\.' | sed 's/-[0-9].*//' | sort -u)
@@ -373,7 +373,7 @@ _dfs_detect_cycle(){
     deps=$(dnf repoquery \
         --config="$repo_file" \
         --disablerepo='*' \
-        --enablerepo='offline-temp' \
+        --enablerepo="$(offline_temp_repo_selector)" \
         --releasever="$release_ver" \
         --requires \
         "$node" 2>/dev/null | head -10 | grep -E '\.' | sed 's/-[0-9].*//')

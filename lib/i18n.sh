@@ -93,13 +93,15 @@ show_language_menu(){
     echo ""
     echo "  1) $(t LANG_ZH)"
     echo "  2) $(t LANG_EN)"
+    echo "  0) $(t MENU_EXIT)"
     echo ""
-    read -r -p "$(t LANG_SELECT_PROMPT) [1]: " lang_choice
+    read -r -p "$(t LANG_SELECT_PROMPT) [1/2/0]: " lang_choice
     lang_choice=${lang_choice:-1}
 
     case "$lang_choice" in
         1) set_language "zh_CN" ;;
         2) set_language "en_US" ;;
+        0) return 1 ;;
         *) set_language "zh_CN" ;;
     esac
 

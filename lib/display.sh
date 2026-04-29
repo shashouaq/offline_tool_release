@@ -127,12 +127,12 @@ show_selected_tools(){
     local col=0
 
     if [[ ${#tools[@]} -eq 0 ]]; then
-        print_warning "No tools selected"
+        print_warning "$(t TOOL_NO_SELECTION)"
         return
     fi
 
     echo ""
-    print_section "Selected tools (${#tools[@]})"
+    print_section "$(lang_pick "已选择工具" "Selected tools") (${#tools[@]})"
     for tool in "${tools[@]}"; do
         printf "  * %-20s" "$tool"
         ((col++))

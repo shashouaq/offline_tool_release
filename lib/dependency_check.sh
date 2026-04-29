@@ -1,12 +1,8 @@
 #!/bin/bash
-# Environment self-check and dependency bootstrap.
 
 declare -a DEP_MISSING=()
 
-_dep_msg(){
-    local zh="$1" en="$2"
-    lang_pick "$zh" "$en"
-}
+_dep_msg(){ local zh="$1" en="$2"; lang_pick "$zh" "$en"; }
 
 dep_display_env_summary(){
     local cur_pm="$1"
@@ -23,22 +19,18 @@ dep_display_env_summary(){
 
     local current_os_name
     current_os_name=$(detect_current_os 2>/dev/null) || current_os_name=""
-    if [[ -n "${TARGET_OS:-}" ]] && [[ -n "$current_os_name" ]] && [[ "$current_os_name" != "$TARGET_OS" ]]; then
+    if [[ -n "${TARGET_OS:-}" && -n "$current_os_name" ]] && [[ "$current_os_name" != "$TARGET_OS" ]]; then
         show_status "warn" "$(t WARNING): $(t CAUSE_SYSTEM_MISMATCH)"
     else
         show_status "ok" "$(_dep_msg '当前系统信息正常' 'Current system info looks good')"
     fi
 }
 
-dep_mark_missing(){
-    local pkg="$1"
-    DEP_MISSING+=("$pkg")
-}
+dep_mark_missing(){ DEP_MISSING+=("$1"); }
 
 dep_collect_missing(){
     local cur_pm="$1"
     DEP_MISSING=()
-
     case "$cur_pm" in
         dnf|yum)
             if ! command -v dnf &>/dev/null && ! command -v yum &>/dev/null; then
@@ -47,7 +39,6 @@ dep_collect_missing(){
             else
                 show_status "ok" "dnf/yum"
             fi
-
             if ! command -v createrepo_c &>/dev/null && ! command -v createrepo &>/dev/null; then
                 dep_mark_missing "createrepo_c"
                 show_status "error" "createrepo_c $(t CAUSE_NOT_FOUND)"
@@ -64,38 +55,24 @@ dep_collect_missing(){
             fi
             ;;
         *)
-            show_status "warn" "$(_dep_msg '未检测到包管理器（dnf/yum/apt）' 'Package manager not found (dnf/yum/apt)')"
+            show_status "warn" "$(_dep_msg '未检测到包管理器(dnf/yum/apt)' 'Package manager not found (dnf/yum/apt)')"
             ;;
     esac
-
-    if ! command -v tar &>/dev/null; then
-        dep_mark_missing "tar"
-        show_status "error" "tar $(t CAUSE_NOT_FOUND)"
-    else
-        show_status "ok" "tar"
-    fi
-
-    if ! command -v curl &>/dev/null; then
-        dep_mark_missing "curl"
-        show_status "error" "curl $(t CAUSE_NOT_FOUND)"
-    else
-        show_status "ok" "curl"
-    fi
+    if ! command -v tar &>/dev/null; then dep_mark_missing "tar"; show_status "error" "tar $(t CAUSE_NOT_FOUND)"; else show_status "ok" "tar"; fi
+    if ! command -v curl &>/dev/null; then dep_mark_missing "curl"; show_status "error" "curl $(t CAUSE_NOT_FOUND)"; else show_status "ok" "curl"; fi
 }
 
 dep_manual_menu(){
     local -a missing=("$@")
     local choice
-
     log_event "INFO" "dep_check" "menu_render" "missing dependency menu shown" "count=${#missing[@]}" "items=${missing[*]}"
-    print_section "$(_dep_msg '依赖处理' 'Dependency actions')"
-    print_warning "$(_dep_msg '缺失依赖' 'Missing dependencies') (${#missing[@]}): ${missing[*]}"
-    echo "  1) $(_dep_msg '自动安装缺失依赖' 'Auto install missing dependencies')"
-    echo "  2) $(_dep_msg '继续执行（后续可能失败）' 'Continue anyway (may fail later)')"
-    echo "  0) $(_dep_msg '返回' 'Back')"
-    echo ""
-
     while true; do
+        print_section "$(_dep_msg '依赖处理' 'Dependency actions')"
+        print_warning "$(_dep_msg '缺失依赖' 'Missing dependencies') (${#missing[@]}): ${missing[*]}"
+        echo "  1) $(_dep_msg '自动安装缺失依赖' 'Auto install missing dependencies')"
+        echo "  2) $(_dep_msg '继续执行（后续可能失败）' 'Continue anyway (may fail later)')"
+        echo "  0) $(_dep_msg '返回' 'Back')"
+        echo ""
         printf "%s" "$(_dep_msg '请选择 [1/2/0]: ' 'Select [1/2/0]: ')"
         read -r choice
         choice=${choice:-1}
@@ -114,7 +91,6 @@ check_install_deps(){
     cur_pm=$(detect_pkg_manager 2>/dev/null || true)
     dep_display_env_summary "$cur_pm"
     dep_collect_missing "$cur_pm"
-
     if [[ ${#DEP_MISSING[@]} -eq 0 ]]; then
         print_success "$(t INSTALL_VERIFY_SUCCESS)"
         log_event "INFO" "dep_check" "menu_render" "dependency pass menu shown"
@@ -130,7 +106,6 @@ check_install_deps(){
         [[ "$pass_choice" == "0" ]] && return 1
         return 0
     fi
-
     dep_manual_menu "${DEP_MISSING[@]}"
     case $? in
         10) auto_install_deps "${DEP_MISSING[@]}" || return 1 ;;
@@ -146,7 +121,6 @@ auto_install_deps(){
     local cur_pm
     cur_pm=$(detect_pkg_manager 2>/dev/null || true)
     [[ ${#to_install[@]} -eq 0 ]] && return 0
-
     print_info "$(t INSTALLING): ${to_install[*]}"
     case "$cur_pm" in
         dnf|yum)
@@ -177,7 +151,6 @@ auto_install_deps(){
             return 1
             ;;
     esac
-
     print_success "$(t INSTALL_COMPLETE)"
     return 0
 }

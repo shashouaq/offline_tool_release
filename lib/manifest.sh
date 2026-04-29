@@ -77,10 +77,12 @@ write_manifest_json(){
     local kernel_deps_csv="$7"
     local pkg_dir="$8"
 
-    local generated_at package_count source_label
+    local generated_at package_count source_label build_host build_user
     generated_at=$(date '+%Y-%m-%dT%H:%M:%S%z')
     package_count=$(find "$pkg_dir" -type f \( -name "*.rpm" -o -name "*.deb" \) 2>/dev/null | wc -l)
     source_label="${DOWNLOAD_SOURCE_LABEL:-repo}"
+    build_host=$(hostname 2>/dev/null || echo unknown)
+    build_user=$(whoami 2>/dev/null || echo unknown)
 
     mkdir -p "$(dirname "$output_file")"
     cat > "$output_file" <<EOF
@@ -99,6 +101,12 @@ write_manifest_json(){
     "tools": $(csv_to_json_array "$tools_csv"),
     "kernel_dependencies": $(csv_to_json_array "$kernel_deps_csv"),
     "repo_sources": $(repo_sources_to_json_array)
+  },
+  "build": {
+    "host": "$(json_escape "$build_host")",
+    "user": "$(json_escape "$build_user")",
+    "work_dir": "$(json_escape "${WORK_DIR:-unknown}")",
+    "log_session_id": "$(json_escape "${LOG_SESSION_ID:-unknown}")"
   }
 }
 EOF
@@ -189,13 +197,32 @@ file_manifest_number(){
 manifest_tools_from_file(){
     local manifest_file="$1"
     [[ -f "$manifest_file" ]] || return 1
-    sed -n '/"tools"[[:space:]]*:/,/]/p' "$manifest_file" \
-        | tr -d '\r' \
-        | tr -d '\n' \
-        | sed -E 's/.*"tools"[[:space:]]*:[[:space:]]*\[(.*)\].*/\1/' \
-        | tr ',' '\n' \
-        | sed -E 's/^[[:space:]]*"//; s/"[[:space:]]*$//; s/^[[:space:]]+//; s/[[:space:]]+$//' \
-        | awk 'NF'
+    awk '
+    BEGIN{in_tools=0}
+    {
+      line=$0
+      gsub(/\r/,"",line)
+      if(in_tools==0 && line ~ /"tools"[[:space:]]*:/){
+        sub(/^.*"tools"[[:space:]]*:[[:space:]]*\[/,"",line)
+        in_tools=1
+      } else if(in_tools==0){
+        next
+      }
+      if(in_tools==1){
+        if(line ~ /\]/){
+          sub(/\].*$/,"",line)
+          in_tools=2
+        }
+        gsub(/"/,"",line)
+        gsub(/,/,"\n",line)
+        n=split(line,arr,"\n")
+        for(i=1;i<=n;i++){
+          item=arr[i]
+          gsub(/^[[:space:]]+|[[:space:]]+$/,"",item)
+          if(item != "" && item !~ /:/) print item
+        }
+      }
+    }' "$manifest_file"
 }
 
 manifest_compatibility_status(){

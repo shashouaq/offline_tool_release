@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set timeout -1
+set project [lindex $argv 0]
+if {$project eq ""} { set project "/root/offline_tool_release_v1" }
+spawn bash -lc "cd $project && ./offline_tools_v1.sh"
+expect {
+    -re {Select Language|选择语言} { send "1\r"; exp_continue }
+    -re {请选择:|Please select:} { send "2\r"; exp_continue }
+    -re {请选择 \\[1/0\\]:|Select \\[1/0\\]:} { send "0\r"; exp_continue }
+    -re {请选择 \\[1/2/0\\]:|Select \\[1/2/0\\]:} { send "0\r"; exp_continue }
+    -re {Please select \\[1/2/0\\]:|请选择 \\[1/2/0\\]:} { send "0\r"; exp_continue }
+    eof
+}

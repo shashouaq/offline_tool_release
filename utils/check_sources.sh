@@ -19,7 +19,7 @@ trim(){
 
 probe_url(){
     local url="$1"
-    curl -fsSLk --max-time "$TIMEOUT" -o /dev/null "$url" >/dev/null 2>&1
+    curl -fsSLk --retry 2 --retry-delay 1 --retry-all-errors --max-time "$TIMEOUT" -o /dev/null "$url" >/dev/null 2>&1
 }
 
 check_one_repo(){

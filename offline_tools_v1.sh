@@ -100,11 +100,12 @@ _simple_log(){
 # =============================================
 source "$LIB_DIR/ui.sh" || { echo "ERROR: failed to load ui.sh"; exit 1; }
 source "$LIB_DIR/i18n.sh" || { echo "ERROR: failed to load i18n.sh"; exit 1; }
+source "$LIB_DIR/runtime_config.sh" 2>/dev/null || true
 
 init_language
 
 if [[ $# -eq 0 && -t 0 ]]; then
-    show_language_menu
+    show_language_menu || exit 0
 fi
 
 source "$LIB_DIR/logger.sh" || { echo "ERROR: failed to load logger.sh"; exit 1; }

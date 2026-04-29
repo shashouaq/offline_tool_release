@@ -14,17 +14,26 @@ _security_log(){
 
 init_tool_whitelist(){
     local conf_file="$1"
-    local tool_name
+    local tool_name src_file
+    local -a conf_files=()
 
-    [[ -f "$conf_file" ]] || return 1
+    [[ -f "$conf_file" ]] && conf_files+=("$conf_file")
+    if [[ -d "$CONF_DIR/tools.d" ]]; then
+        while IFS= read -r src_file; do
+            conf_files+=("$src_file")
+        done < <(find "$CONF_DIR/tools.d" -maxdepth 1 -type f -name '*.conf' | sort)
+    fi
+    [[ ${#conf_files[@]} -gt 0 ]] || return 1
 
     TOOL_WHITELIST=()
-    while IFS='|' read -r tool_name _desc _rest; do
-        [[ "$tool_name" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${tool_name// }" ]] && continue
-        tool_name=$(echo "$tool_name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        [[ -n "$tool_name" ]] && TOOL_WHITELIST+=("$tool_name")
-    done < "$conf_file"
+    for src_file in "${conf_files[@]}"; do
+        while IFS='|' read -r tool_name _desc _rest; do
+            [[ "$tool_name" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "${tool_name// }" ]] && continue
+            tool_name=$(echo "$tool_name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            [[ -n "$tool_name" ]] && TOOL_WHITELIST+=("$tool_name")
+        done < "$src_file"
+    done
 
     _security_log "[security] loaded ${#TOOL_WHITELIST[@]} whitelist tools"
     return 0

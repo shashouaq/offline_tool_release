@@ -203,7 +203,7 @@ check_package_version_available(){
         result=$(dnf repoquery \
             --config="$repo_file" \
             --disablerepo='*' \
-            --enablerepo='offline-temp' \
+            --enablerepo="$(offline_temp_repo_selector)" \
             --releasever="$release_ver" \
             --qf "%{name}-%{version}-%{release}" \
             "$package" 2>/dev/null | head -1)

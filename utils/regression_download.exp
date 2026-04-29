@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+set timeout -1
+set project [lindex $argv 0]
+if {$project eq ""} { set project "/root/offline_tool_release_v1" }
+spawn bash -lc "cd $project && ./offline_tools_v1.sh"
+expect {
+    -re {Select Language|选择语言} { send "1\r"; exp_continue }
+    -re {请选择:|Please select:} { send "1\r"; exp_continue }
+    -re {Press Enter to use detected OS|回车使用当前系统} { send "\r"; exp_continue }
+    -re {Select architecture|请选择架构} { send "1\r"; exp_continue }
+    -re {Select \\[1\\]:|请选择 \\[1\\]:} { send "1\r"; exp_continue }
+    -re {Select \\[1/0\\]:|请选择 \\[1/0\\]:} { send "1\r"; exp_continue }
+    -re {Select \\[1/2/3/0\\]:|请选择 \\[1/2/3/0\\]:} { send "1\r"; exp_continue }
+    -re {Input \\[q\\]:|输入 \\[q\\]:} { send "q\r"; exp_continue }
+    -re {Confirm download|确认下载} { send "1\r"; exp_continue }
+    eof
+}

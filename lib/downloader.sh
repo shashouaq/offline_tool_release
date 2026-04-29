@@ -7,9 +7,70 @@ declare -a DOWNLOAD_QUEUE=()
 declare -A DOWNLOAD_STATUS=()
 declare -A DOWNLOAD_FAIL_REASON=()
 declare -A DOWNLOAD_FAIL_DETAIL=()
+DOWNLOAD_STATE_DIR=""
 LAST_DOWNLOAD_EVENT=""
 DOWNLOAD_ANIMATE=${DOWNLOAD_ANIMATE:-0}
 DOWNLOAD_SOURCE_LABEL=""
+
+download_state_dir(){
+    if [[ -n "$DOWNLOAD_STATE_DIR" ]]; then
+        echo "$DOWNLOAD_STATE_DIR"
+    elif [[ -n "${WORK_DIR:-}" ]]; then
+        echo "$WORK_DIR/download_state"
+    else
+        echo "/tmp/offline_tools_download_state"
+    fi
+}
+
+download_state_key(){
+    printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'
+}
+
+download_state_artifact_file(){
+    local key
+    key=$(download_state_key "$1")
+    echo "$(download_state_dir)/${key}.packages"
+}
+
+download_state_status_file(){
+    local key
+    key=$(download_state_key "$1")
+    echo "$(download_state_dir)/${key}.status"
+}
+
+download_collect_package_names(){
+    local pkg_type="$1" src_dir="$2"
+    local file pkg_name
+    while IFS= read -r -d '' file; do
+        if [[ "$pkg_type" == "rpm" ]]; then
+            if command -v rpm &>/dev/null; then
+                pkg_name=$(rpm -qp --qf '%{NAME}\n' "$file" 2>/dev/null | head -n1)
+            else
+                pkg_name=$(basename "$file" .rpm | sed -E 's/-[0-9][^-]*-[^-]*\.[^.]+$//')
+            fi
+        else
+            if command -v dpkg-deb &>/dev/null; then
+                pkg_name=$(dpkg-deb -f "$file" Package 2>/dev/null | head -n1)
+            else
+                pkg_name=$(basename "$file" .deb)
+                pkg_name="${pkg_name%%_*}"
+            fi
+        fi
+        [[ -n "$pkg_name" ]] && printf '%s\n' "$pkg_name"
+    done < <(find "$src_dir" -type f \( -name '*.rpm' -o -name '*.deb' \) -print0 2>/dev/null | sort -z)
+}
+
+download_store_artifacts(){
+    local tool="$1" pkg_type="$2" src_dir="$3"
+    local artifact_file status_file tmp_file
+    artifact_file=$(download_state_artifact_file "$tool")
+    status_file=$(download_state_status_file "$tool")
+    mkdir -p "$(download_state_dir)"
+    tmp_file="${artifact_file}.tmp"
+    download_collect_package_names "$pkg_type" "$src_dir" | awk 'NF && !seen[$0]++' > "$tmp_file"
+    mv -f "$tmp_file" "$artifact_file"
+    printf 'success\n' > "$status_file"
+}
 
 is_rpm_package_group(){
     local name="$1"
@@ -51,7 +112,7 @@ classify_download_failure(){
         if [[ -n "$forcearch" && "$forcearch" != "$cur_arch" ]]; then
             fa_arg="--forcearch=$forcearch"
         fi
-        out=$(dnf repoquery --config="$repo_file" --disablerepo='*' --enablerepo='offline-temp' --releasever="$release_ver" $fa_arg "$tool" 2>&1)
+        out=$(dnf repoquery --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg "$tool" 2>&1)
         rc=$?
         if echo "$out" | grep -qiE "No match for argument|Unable to find a match|No matching Packages to list"; then
             reason="PACKAGE_OR_GROUP_NOT_FOUND"
@@ -101,6 +162,8 @@ classify_download_failure(){
 
 init_download_cache(){
     mkdir -p "$DOWNLOAD_CACHE_DIR"
+    DOWNLOAD_STATE_DIR="$(download_state_dir)"
+    mkdir -p "$DOWNLOAD_STATE_DIR"
     log "[cache] download cache: $DOWNLOAD_CACHE_DIR"
     if [[ "$PKG_TYPE" == "rpm" ]]; then
         verify_download_safety dnf || log "[WARN] dnf safety check failed"
@@ -114,6 +177,9 @@ reset_download_state(){
     DOWNLOAD_STATUS=()
     DOWNLOAD_FAIL_REASON=()
     DOWNLOAD_FAIL_DETAIL=()
+    DOWNLOAD_STATE_DIR="$(download_state_dir)"
+    rm -rf "$DOWNLOAD_STATE_DIR"
+    mkdir -p "$DOWNLOAD_STATE_DIR"
     LAST_DOWNLOAD_EVENT=""
 }
 
@@ -149,7 +215,7 @@ validate_rpm_group_installable(){
         fa_arg="--forcearch=$forcearch"
     fi
 
-    group_list=$(dnf group list --config="$repo_file" --disablerepo='*' --enablerepo='offline-temp' --releasever="$release_ver" $fa_arg 2>&1)
+    group_list=$(dnf group list --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg 2>&1)
     if ! echo "$group_list" | grep -qiE "(^|[[:space:]])\\(${group_name}\\)($|[[:space:]])|(^|[[:space:]])${group_name}($|[[:space:]])"; then
         echo "[$(date '+%F %T')] [verify] RPM group id not found: $group_name (stage=$stage)" >> "$LOG_FILE"
         if [[ "$stage" != "precheck" || "${OFFLINE_TOOLS_VERBOSE_VERIFY:-0}" == "1" ]]; then
@@ -158,7 +224,7 @@ validate_rpm_group_installable(){
         return 1
     fi
 
-    check_output=$(dnf group info --config="$repo_file" --disablerepo='*' --enablerepo='offline-temp' --releasever="$release_ver" $fa_arg "$group_name" 2>&1)
+    check_output=$(dnf group info --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg "$group_name" 2>&1)
     if echo "$check_output" | grep -qiE "(no such group|no groups matched|is not available|nothing to do|error:)"; then
         echo "[$(date '+%F %T')] [verify] RPM group is not installable: $group_name (stage=$stage)" >> "$LOG_FILE"
         if [[ "$stage" != "precheck" || "${OFFLINE_TOOLS_VERBOSE_VERIFY:-0}" == "1" ]]; then
@@ -183,14 +249,14 @@ download_rpm_package(){
         local matches=()
         while IFS= read -r line; do
             [[ "$line" =~ ^([A-Za-z0-9._+-]+)\. ]] && matches+=("${BASH_REMATCH[1]}")
-        done < <(dnf search --config="$repo_file" --disablerepo='*' --enablerepo='offline-temp' --releasever="$release_ver" $fa_arg "$pkg" 2>/dev/null)
+        done < <(dnf search --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg "$pkg" 2>/dev/null)
         [[ ${#matches[@]} -eq 0 ]] && return 2
         local rc=0
         for match in "${matches[@]}"; do
             dnf download \
                 --config="$repo_file" \
                 --disablerepo='*' \
-                --enablerepo='offline-temp' \
+                --enablerepo="$(offline_temp_repo_selector)" \
                 --releasever="$release_ver" \
                 $fa_arg \
                 --resolve \
@@ -206,7 +272,7 @@ download_rpm_package(){
             dnf install \
                 --config="$repo_file" \
                 --disablerepo='*' \
-                --enablerepo='offline-temp' \
+                --enablerepo="$(offline_temp_repo_selector)" \
                 --releasever="$release_ver" \
                 $fa_arg \
                 --setopt=cachedir="$dnf_cache" \
@@ -230,46 +296,47 @@ download_rpm_package(){
         fake_root="$task_dir/installroot"
         dnf_cache="$task_dir/cache"
         mkdir -p "$fake_root" "$dnf_cache"
-        dnf group install --config="$repo_file" --releasever="$release_ver" $fa_arg --setopt=cachedir="$dnf_cache" --installroot="$fake_root" --downloadonly --downloaddir="$pkg_dir" --allowerasing --best -y "$group_name" >> "$LOG_FILE" 2>&1 || rc=$?
+        dnf group install --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg --setopt=cachedir="$dnf_cache" --installroot="$fake_root" --downloadonly --downloaddir="$pkg_dir" --allowerasing --best -y "$group_name" >> "$LOG_FILE" 2>&1 || rc=$?
         rm -rf "$task_dir"
         return $rc
     fi
 
-    dnf repoquery --config="$repo_file" --disablerepo='*' --enablerepo='offline-temp' --releasever="$release_ver" $fa_arg "$pkg" &>/dev/null || return 2
+    local -a resolved=()
+    local line rc=0
 
-    dnf download \
-        --config="$repo_file" \
-        --disablerepo='*' \
-        --enablerepo='offline-temp' \
-        --releasever="$release_ver" \
-        $fa_arg \
-        --resolve \
-        --alldeps \
-        --destdir="$pkg_dir" \
-        "$pkg" >> "$LOG_FILE" 2>&1 && return 0
+    while IFS= read -r line; do
+        [[ "$line" =~ \.(x86_64|noarch|aarch64|loongarch64)$ ]] && resolved+=("$line")
+    done < <(dnf repoquery --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg --latest-limit=1 "$pkg" 2>/dev/null)
 
-    local task_dir fake_root dnf_cache rc=0
-    task_dir=$(make_dnf_task_dir "$pkg")
-    fake_root="$task_dir/installroot"
-    dnf_cache="$task_dir/cache"
-    mkdir -p "$fake_root" "$dnf_cache"
+    if [[ ${#resolved[@]} -eq 0 ]]; then
+        while IFS= read -r line; do
+            [[ "$line" =~ ^([A-Za-z0-9._+-]+)\. ]] || continue
+            resolved+=("${BASH_REMATCH[1]}")
+        done < <(dnf search --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg "$pkg" 2>/dev/null)
+    fi
 
-    dnf install \
-        --config="$repo_file" \
-        --disablerepo='*' \
-        --enablerepo='offline-temp' \
-        --releasever="$release_ver" \
-        $fa_arg \
-        --setopt=cachedir="$dnf_cache" \
-        --installroot="$fake_root" \
-        --downloadonly \
-        --downloaddir="$pkg_dir" \
-        --allowerasing \
-        --best \
-        -y \
-        "$pkg" >> "$LOG_FILE" 2>&1 || rc=$?
+    if [[ ${#resolved[@]} -eq 0 ]]; then
+        return 2
+    fi
 
-    rm -rf "$task_dir"
+    while IFS= read -r line; do
+        [[ "$line" =~ \.(x86_64|noarch|aarch64|loongarch64)$ ]] && resolved+=("$line")
+    done < <(dnf repoquery --config="$repo_file" --disablerepo='*' --enablerepo="$(offline_temp_repo_selector)" --releasever="$release_ver" $fa_arg --latest-limit=1 --requires --resolve --recursive "$pkg" 2>/dev/null)
+
+    mapfile -t resolved < <(printf '%s\n' "${resolved[@]}" | awk 'NF && !seen[$0]++')
+    [[ ${#resolved[@]} -gt 0 ]] || return 2
+
+    for line in "${resolved[@]}"; do
+        dnf download \
+            --config="$repo_file" \
+            --disablerepo='*' \
+            --enablerepo="$(offline_temp_repo_selector)" \
+            --releasever="$release_ver" \
+            $fa_arg \
+            --destdir="$pkg_dir" \
+            "$line" >> "$LOG_FILE" 2>&1 || rc=$?
+    done
+
     return $rc
 }
 
@@ -292,19 +359,20 @@ download_deb_package(){
 download_single_package(){
     local tool="$1" repo_file="$2" pkg_dir="$3" pkg_type="$4" release_ver="$5" forcearch="$6"
     local max_retries=3 retry_count=0
-    mkdir -p "$pkg_dir"
+    local tmp_pkg_dir
+    mkdir -p "$pkg_dir" "$(download_state_dir)"
 
     while [[ $retry_count -lt $max_retries ]]; do
         ((retry_count++))
         echo "[$(date '+%F %T')] [download $retry_count/$max_retries] $tool" >> "$LOG_FILE"
-        local prev_count new_count downloaded rc=0
-        prev_count=$(find "$pkg_dir" -type f \( -name '*.rpm' -o -name '*.deb' \) 2>/dev/null | wc -l)
+        local downloaded rc=0
+        tmp_pkg_dir=$(mktemp -d "${WORK_DIR:-/tmp}/dl_$(download_state_key "$tool")_XXXXXX")
 
         if [[ "$DOWNLOAD_ANIMATE" == "1" ]]; then
             if [[ "$pkg_type" == "rpm" ]]; then
-                ( download_rpm_package "$tool" "$repo_file" "$pkg_dir" "$release_ver" "$forcearch" ) &
+                ( download_rpm_package "$tool" "$repo_file" "$tmp_pkg_dir" "$release_ver" "$forcearch" ) &
             else
-                ( download_deb_package "$tool" "$pkg_dir" ) &
+                ( download_deb_package "$tool" "$tmp_pkg_dir" ) &
             fi
             local dpid=$!
             while kill -0 "$dpid" 2>/dev/null; do
@@ -314,15 +382,19 @@ download_single_package(){
             wait "$dpid" || rc=$?
         else
             if [[ "$pkg_type" == "rpm" ]]; then
-                download_rpm_package "$tool" "$repo_file" "$pkg_dir" "$release_ver" "$forcearch" || rc=$?
+                download_rpm_package "$tool" "$repo_file" "$tmp_pkg_dir" "$release_ver" "$forcearch" || rc=$?
             else
-                download_deb_package "$tool" "$pkg_dir" || rc=$?
+                download_deb_package "$tool" "$tmp_pkg_dir" || rc=$?
             fi
         fi
 
-        new_count=$(find "$pkg_dir" -type f \( -name '*.rpm' -o -name '*.deb' \) 2>/dev/null | wc -l)
-        downloaded=$((new_count - prev_count))
+        downloaded=$(find "$tmp_pkg_dir" -type f \( -name '*.rpm' -o -name '*.deb' \) 2>/dev/null | wc -l)
         if [[ $rc -eq 0 && $downloaded -gt 0 ]]; then
+            download_store_artifacts "$tool" "$pkg_type" "$tmp_pkg_dir"
+            find "$tmp_pkg_dir" -type f \( -name '*.rpm' -o -name '*.deb' \) -print0 2>/dev/null | while IFS= read -r -d '' file; do
+                mv -f "$file" "$pkg_dir/" 2>/dev/null || cp -f "$file" "$pkg_dir/"
+            done
+            rm -rf "$tmp_pkg_dir"
             add_to_cache "$tool"
             echo "[$(date '+%F %T')] [download] success: $tool, files=$downloaded" >> "$LOG_FILE"
             DOWNLOAD_FAIL_REASON["$tool"]=""
@@ -330,12 +402,14 @@ download_single_package(){
             DOWNLOAD_STATUS["$tool"]="success"
             return 0
         fi
+        rm -rf "$tmp_pkg_dir"
         [[ $rc -eq 2 ]] && { classify_download_failure "$tool" "$pkg_type" "$repo_file" "$release_ver" "$forcearch"; return 2; }
         sleep 2
     done
 
     echo "[$(date '+%F %T')] [download] failed after retries: $tool" >> "$LOG_FILE"
     classify_download_failure "$tool" "$pkg_type" "$repo_file" "$release_ver" "$forcearch"
+    printf 'failed\n' > "$(download_state_status_file "$tool")"
     DOWNLOAD_STATUS["$tool"]="failed"
     return 1
 }
@@ -347,18 +421,29 @@ wait_for_one_download(){
     local -n failed_ref=$4
     local -n failed_list_ref=$5
     [[ ${#pids_ref[@]} -eq 0 ]] && return 0
-    local pid="${pids_ref[0]}" key="pid_${pids_ref[0]}" tool="${pid_map_ref[$key]:-}" rc=0
+    local pid key tool rc=0
+    pid="${pids_ref[0]}"
+    key="pid_${pid}"
+    if [[ -v "pid_map_ref[$key]" ]]; then
+        tool="${pid_map_ref[$key]}"
+    else
+        tool=""
+    fi
     wait "$pid" || rc=$?
     log "[download/wait] pid=$pid tool=${tool:-unknown} rc=$rc"
-    if [[ $rc -eq 0 ]]; then
-        DOWNLOAD_STATUS[$tool]="success"
+    if [[ -n "$tool" && $rc -eq 0 ]]; then
+        DOWNLOAD_STATUS["$tool"]="success"
         ((success_ref++))
         LAST_DOWNLOAD_EVENT="ok:$tool"
-    else
-        DOWNLOAD_STATUS[$tool]="failed"
+    elif [[ -n "$tool" ]]; then
+        DOWNLOAD_STATUS["$tool"]="failed"
         ((failed_ref++))
         failed_list_ref+=("$tool")
         LAST_DOWNLOAD_EVENT="error:$tool"
+    else
+        ((failed_ref++))
+        failed_list_ref+=("unknown(pid=$pid)")
+        LAST_DOWNLOAD_EVENT="error:unknown"
     fi
     unset 'pid_map_ref[$key]'
     unset 'pids_ref[0]'
@@ -376,9 +461,9 @@ download_parallel(){
         while [[ ${#pids[@]} -ge $MAX_PARALLEL_DOWNLOADS ]]; do
             wait_for_one_download pids pid_to_tool success failed failed_tools_list
             if [[ "$LAST_DOWNLOAD_EVENT" == ok:* ]]; then
-                update_progress 1 "download (${LAST_DOWNLOAD_EVENT#ok:})"
+                update_progress 1 "download tool=${LAST_DOWNLOAD_EVENT#ok:} source=${DOWNLOAD_SOURCE_LABEL}"
             else
-                update_progress 1 "download (${LAST_DOWNLOAD_EVENT#error:}, failed)"
+                update_progress 1 "download tool=${LAST_DOWNLOAD_EVENT#error:} source=${DOWNLOAD_SOURCE_LABEL} failed"
             fi
         done
         ( download_single_package "$tool" "$TEMP_REPO_FILE" "$PKG_DIR" "$PKG_TYPE" "$RELEASE_VER" "$FORCEARCH" ) &
@@ -391,9 +476,9 @@ download_parallel(){
     while [[ ${#pids[@]} -gt 0 ]]; do
         wait_for_one_download pids pid_to_tool success failed failed_tools_list
         if [[ "$LAST_DOWNLOAD_EVENT" == ok:* ]]; then
-            update_progress 1 "download (${LAST_DOWNLOAD_EVENT#ok:})"
+            update_progress 1 "download tool=${LAST_DOWNLOAD_EVENT#ok:} source=${DOWNLOAD_SOURCE_LABEL}"
         else
-            update_progress 1 "download (${LAST_DOWNLOAD_EVENT#error:}, failed)"
+            update_progress 1 "download tool=${LAST_DOWNLOAD_EVENT#error:} source=${DOWNLOAD_SOURCE_LABEL} failed"
         fi
     done
     # Recalculate from status map to avoid stale/misbound per-PID accounting.
@@ -429,12 +514,12 @@ download_sequential(){
         if download_single_package "$tool" "$TEMP_REPO_FILE" "$PKG_DIR" "$PKG_TYPE" "$RELEASE_VER" "$FORCEARCH"; then
             ((success++))
             DOWNLOAD_STATUS[$tool]="success"
-            update_progress 1 "download ($tool)"
+            update_progress 1 "download tool=$tool source=${DOWNLOAD_SOURCE_LABEL}"
         else
             failed_list+=("$tool")
             ((failed++))
             DOWNLOAD_STATUS[$tool]="failed"
-            update_progress 1 "download ($tool, failed)"
+            update_progress 1 "download tool=$tool source=${DOWNLOAD_SOURCE_LABEL} failed"
             show_status error "$tool"
         fi
     done

@@ -65,9 +65,13 @@ confirm_dialog(){
         confirm_text="$(t INSTALL_CONFIRM)"
     fi
 
-    read -r -p "$confirm_text [$default]: " confirm
-    confirm=${confirm:-$default}
-    [[ "$confirm" =~ ^[Yy]$ ]]
+    echo "  1) $(lang_pick "确认继续" "Confirm")"
+    echo "  0) $(t BACK_MENU)"
+    read -r -p "$confirm_text [1/0]: " confirm
+    case "${confirm:-1}" in
+        1|y|Y) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 export -f show_back_prompt
