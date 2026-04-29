@@ -15,20 +15,20 @@ SOURCE = ROOT / "docs" / "offline_tools_user_manual_zh_CN.md"
 OUTPUT = ROOT / "docs" / "offline_tools_user_manual_zh_CN.pdf"
 
 
-def register_fonts():
+def register_font():
     candidates = [
-        Path(r"C:\Windows\Fonts\simhei.ttf"),
-        Path(r"C:\Windows\Fonts\simsunb.ttf"),
         Path(r"C:\Windows\Fonts\msyh.ttc"),
+        Path(r"C:\Windows\Fonts\simhei.ttf"),
+        Path(r"C:\Windows\Fonts\simsun.ttc"),
     ]
     for font_path in candidates:
         if font_path.exists():
             pdfmetrics.registerFont(TTFont("ManualFont", str(font_path)))
             return "ManualFont"
-    raise FileNotFoundError("No suitable Chinese font found in C:\\Windows\\Fonts")
+    return "Helvetica"
 
 
-def build_styles(font_name: str):
+def build_styles(font_name):
     styles = getSampleStyleSheet()
     styles.add(
         ParagraphStyle(
@@ -38,6 +38,7 @@ def build_styles(font_name: str):
             fontSize=20,
             leading=28,
             alignment=TA_CENTER,
+            textColor=colors.HexColor("#0f3a5f"),
             spaceAfter=18,
         )
     )
@@ -46,9 +47,9 @@ def build_styles(font_name: str):
             name="ManualH1",
             parent=styles["Heading1"],
             fontName=font_name,
-            fontSize=16,
-            leading=24,
-            textColor=colors.HexColor("#16324f"),
+            fontSize=15,
+            leading=22,
+            textColor=colors.HexColor("#14517d"),
             spaceBefore=12,
             spaceAfter=8,
         )
@@ -58,11 +59,11 @@ def build_styles(font_name: str):
             name="ManualH2",
             parent=styles["Heading2"],
             fontName=font_name,
-            fontSize=13,
-            leading=20,
-            textColor=colors.HexColor("#244c74"),
-            spaceBefore=10,
-            spaceAfter=6,
+            fontSize=12,
+            leading=18,
+            textColor=colors.HexColor("#176b8f"),
+            spaceBefore=8,
+            spaceAfter=5,
         )
     )
     styles.add(
@@ -70,10 +71,10 @@ def build_styles(font_name: str):
             name="ManualBody",
             parent=styles["BodyText"],
             fontName=font_name,
-            fontSize=10.5,
-            leading=18,
+            fontSize=9.6,
+            leading=15.5,
             wordWrap="CJK",
-            spaceAfter=6,
+            spaceAfter=5,
         )
     )
     styles.add(
@@ -81,9 +82,11 @@ def build_styles(font_name: str):
             name="ManualCode",
             parent=styles["Code"],
             fontName=font_name,
-            fontSize=9,
-            leading=14,
-            backColor=colors.HexColor("#f5f7fa"),
+            fontSize=8.5,
+            leading=13,
+            backColor=colors.HexColor("#f3f6f9"),
+            borderColor=colors.HexColor("#d9e2ec"),
+            borderWidth=0.5,
             borderPadding=6,
             wordWrap="CJK",
         )
@@ -91,11 +94,12 @@ def build_styles(font_name: str):
     return styles
 
 
-def para(text: str, style):
-    return Paragraph(html.escape(text).replace("\n", "<br/>"), style)
+def paragraph(text, style):
+    escaped = html.escape(text).replace("\n", "<br/>")
+    return Paragraph(escaped, style)
 
 
-def render_markdown(md_text: str, styles):
+def render_markdown(md_text, styles):
     story = []
     lines = md_text.splitlines()
     i = 0
@@ -111,7 +115,7 @@ def render_markdown(md_text: str, styles):
                 code_lines = []
             else:
                 story.append(Preformatted("\n".join(code_lines), styles["ManualCode"]))
-                story.append(Spacer(1, 8))
+                story.append(Spacer(1, 6))
                 in_code = False
             i += 1
             continue
@@ -122,12 +126,7 @@ def render_markdown(md_text: str, styles):
             continue
 
         if not line.strip():
-            story.append(Spacer(1, 6))
-            i += 1
-            continue
-
-        if line == "---":
-            story.append(Spacer(1, 8))
+            story.append(Spacer(1, 4))
             i += 1
             continue
 
@@ -150,10 +149,10 @@ def render_markdown(md_text: str, styles):
         if line.startswith("- "):
             items = []
             while i < len(lines) and lines[i].startswith("- "):
-                items.append(ListItem(para(lines[i][2:].strip(), styles["ManualBody"])))
+                items.append(ListItem(paragraph(lines[i][2:].strip(), styles["ManualBody"])))
                 i += 1
-            story.append(ListFlowable(items, bulletType="bullet", start="circle", leftIndent=16))
-            story.append(Spacer(1, 6))
+            story.append(ListFlowable(items, bulletType="bullet", leftIndent=16))
+            story.append(Spacer(1, 4))
             continue
 
         if line[:2].isdigit() and ". " in line:
@@ -162,43 +161,42 @@ def render_markdown(md_text: str, styles):
                 cur = lines[i].strip()
                 if not cur or not cur[0].isdigit() or ". " not in cur:
                     break
-                items.append(ListItem(para(cur.split(". ", 1)[1], styles["ManualBody"])))
+                items.append(ListItem(paragraph(cur.split(". ", 1)[1], styles["ManualBody"])))
                 i += 1
             story.append(ListFlowable(items, bulletType="1", leftIndent=18))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
             continue
 
         paragraph_lines = [line]
         i += 1
         while i < len(lines):
             nxt = lines[i].rstrip()
-            if not nxt.strip() or nxt.startswith(("#", "- ", "```")) or nxt == "---":
+            if not nxt.strip() or nxt.startswith(("#", "- ", "```")):
                 break
             if nxt[:2].isdigit() and ". " in nxt:
                 break
             paragraph_lines.append(nxt)
             i += 1
-        story.append(para("\n".join(paragraph_lines), styles["ManualBody"]))
+        story.append(paragraph("\n".join(paragraph_lines), styles["ManualBody"]))
 
     return story
 
 
 def main():
-    font_name = register_fonts()
+    font_name = register_font()
     styles = build_styles(font_name)
     md_text = SOURCE.read_text(encoding="utf-8")
     doc = SimpleDocTemplate(
         str(OUTPUT),
         pagesize=A4,
-        leftMargin=40,
-        rightMargin=40,
-        topMargin=40,
-        bottomMargin=36,
-        title="离线工具平台 v1.0 使用说明书",
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=34,
+        title="离线工具平台 V1.0 使用说明书",
         author="Codex",
     )
-    story = render_markdown(md_text, styles)
-    doc.build(story)
+    doc.build(render_markdown(md_text, styles))
     print(OUTPUT)
 
 

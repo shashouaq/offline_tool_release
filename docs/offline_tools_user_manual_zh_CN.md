@@ -1,61 +1,72 @@
-# 离线工具平台 V1 使用说明书
+# 离线工具平台 V1.0 使用说明书
 
-## 1. 文档目标
+## 1. 这个工具解决什么问题
 
-本文档用于指导运维、测试和交付人员使用 `offline_tools_v1.sh` 完成离线工具包的下载、打包、传输和安装。
+离线工具平台用于在有网络的 Linux 环境中下载指定 OS、架构和工具包组的完整依赖，并打包成可以带到离线环境安装的本地仓库包。
 
-项目目录：
+一句话流程：
 
-`D:\arm\offline_tool\offline_tool_release`
+```text
+联网机器下载工具和依赖 -> 生成离线包 -> 拷贝到离线机器 -> 离线安装
+```
 
-主脚本入口：
+适用场景：
 
-`offline_tools_v1.sh`
+- 生产环境不能访问外网，但需要安装排障、编译、监控、网络、桌面等工具。
+- 不同 OS、不同架构需要分别准备离线包。
+- 希望安装时只使用离线包内的本地仓库，不隐式联网。
 
-## 2. 产品定位
-
-离线工具平台用于在联网环境中按目标 OS、版本和架构下载工具包组及其依赖，生成可在离线环境中安装的本地仓库压缩包。离线安装时必须使用包内仓库，不允许隐式联网安装。
-
-核心规则：
-
-1. 不同 OS、版本、架构的离线包必须分开。
-2. 下载模式按用户选择的目标 OS/架构执行，不因本机已存在包而跳过。
-3. 安装模式先识别本机环境，再筛选适用于本机的离线包。
-4. 打包和安装界面只展示工具名称，不展开所有依赖包。
-5. 所有菜单必须先完整展示，再等待输入。
-6. 中文和英文菜单必须保持一致覆盖。
-
-## 3. 目录说明
-
-- `conf/`：系统源、工具清单、语言包、适配规则。
-- `lib/`：下载、打包、安装、日志、菜单、元数据等模块。
-- `utils/`：质量门禁、源检查、测试机同步、远程回归脚本。
-- `docs/`：使用说明、决策记录、测试发现。
-- `logs/`：运行日志、源检查日志、自动化验证日志。
-- `output/`：离线包输出目录。
-
-## 4. 环境准备
-
-联网下载环境需要：
-
-- 目标 OS 对应的包管理器，例如 `dnf/yum` 或 `apt-get`。
-- `curl`、`tar` 等基础工具。
-- 足够的临时空间。默认建议 `/tmp` 或工作目录不少于 20GB。
-
-离线安装环境需要：
-
-- 能解压离线包。
-- 能使用本地仓库方式安装 RPM/DEB。
-- 不依赖外部网络。
-
-当 `/tmp` 空间不足时，脚本会尝试切换工作目录，root 环境下可尝试使用临时 tmpfs 工作区。非 root 环境会退回到 `/var/tmp/offline_tools_v1`。
-
-## 5. 启动方式
-
-在 Linux 或 WSL 中进入项目目录：
+主脚本：
 
 ```bash
-cd /mnt/d/arm/offline_tool/offline_tool_release
+./offline_tools_v1.sh
+```
+
+## 2. 目录说明
+
+```text
+offline_tool_release/
+  offline_tools_v1.sh          主入口脚本
+  conf/                        OS 源、工具列表、语言包、规则配置
+  lib/                         下载、打包、安装、菜单、日志等核心模块
+  utils/                       质量检查、源检查、远程回归、Windows 打包脚本
+  docs/                        使用说明、设计记录、测试记录
+  logs/                        运行日志
+  output/                      离线包和校验文件输出目录
+```
+
+重要配置：
+
+- `conf/tools.conf`：工具清单和 RPM/DEB 包组映射。
+- `conf/os_sources.conf`：各 OS 版本的软件源。
+- `conf/tool_os_rules.conf`：不同 OS/架构下的工具兼容规则。
+- `conf/timeout.conf`：源探测、下载重试、临时空间等运行参数。
+
+## 3. 使用前准备
+
+联网下载机器需要：
+
+- Linux 系统，推荐使用目标 OS 同族环境。
+- RPM 系统需要 `dnf` 或 `yum`。
+- DEB 系统需要 `apt-get`。
+- 基础工具：`bash`、`curl`、`tar`。
+- 建议 `/tmp` 或工作目录至少 20GB 可用空间。
+
+离线安装机器需要：
+
+- 能执行 Bash 脚本。
+- 能解压 `.tar.xz`。
+- RPM 环境能使用 `dnf/yum/rpm`。
+- DEB 环境能使用 `apt-get/dpkg`。
+
+脚本会自动检查 `/tmp` 空间。如果空间不足，root 环境会尝试临时扩容或切换 tmpfs 工作区，非 root 环境会切换到 `/var/tmp/offline_tools_v1`。
+
+## 4. 启动工具
+
+在项目目录中执行：
+
+```bash
+cd /root/offline_tool_release_v1
 chmod +x offline_tools_v1.sh
 ./offline_tools_v1.sh
 ```
@@ -72,163 +83,240 @@ chmod +x offline_tools_v1.sh
 ./offline_tools_v1.sh --help
 ```
 
-## 6. 下载模式
+## 5. 下载模式怎么用
 
-下载模式流程：
+下载模式用于在联网环境中生成离线包。
 
-1. 选择语言。
-2. 选择下载模式。
-3. 选择目标 OS。
-4. 选择目标架构。
-5. 选择是否跳过 SSL 证书校验。
-6. 执行环境自检。
-7. 探测并筛选可用源。
-8. 选择工具或包组。
-9. 下载依赖闭包。
-10. 构建本地仓库索引。
-11. 生成离线包、manifest 和校验文件。
+操作步骤：
 
-下载模式不判断本地是否已经存在同名离线包；用户选择什么目标环境和工具，脚本就按当前选择重新执行下载和打包。后续增量合并能力只在明确选择合并时使用。
+1. 进入主菜单，选择 `下载模式`。
+2. 选择目标 OS。RPM 系统只展示 RPM 目标，DEB 系统只展示 DEB 目标。
+3. 选择目标架构，例如 `x86_64` 或 `aarch64`。
+4. 选择是否跳过 SSL 证书校验。公网环境通常选“否”。
+5. 等待环境自检完成。菜单会完整展示后再等待输入。
+6. 选择工具分类或包组。
+7. 确认下载。
+8. 工具会探测可用源，跳过不可达源。
+9. 工具会下载所选包组及完整依赖。
+10. 下载完成后生成离线包、校验文件和快速索引文件。
 
-## 7. 安装模式
-
-安装模式流程：
-
-1. 自动识别本机 OS、版本、架构和包类型。
-2. 扫描 `output/` 或用户选择目录中的离线包。
-3. 根据 `manifest.json` 判断兼容性。
-4. 展示可安装工具列表。
-5. 选择安装全部或选择性安装。
-6. 安装前提示已安装、待安装和可升级状态。
-7. 安装完成后提示继续安装其它工具包或返回主菜单。
-
-如果离线包内 `packages/` 为空，必须视为失败，不能提示安装成功。
-
-## 8. 离线包内容
-
-离线包文件命名按目标环境区分，例如：
+输出示例：
 
 ```text
-offline_openEuler22.03_x86_64_merged.tar.xz
-offline_Ubuntu22.04_aarch64_merged.tar.xz
+output/offline_openEuler22.03_x86_64_merged.tar.xz
+output/offline_openEuler22.03_x86_64_merged.tar.xz.sha256
+output/offline_openEuler22.03_x86_64_merged.tar.xz.header
 ```
 
-离线包内应包含：
+注意：
 
-- `packages/`：RPM 或 DEB 文件。
-- `repodata/` 或 DEB 本地索引。
-- `manifest.json`：目标 OS、架构、工具列表、包数量等元数据。
+- 不同 OS 和架构必须生成不同离线包。
+- 工具下载失败时，不会被写入最终“支持安装工具”列表。
+- 如果匹配的离线包中已经包含本次选择的工具，界面会提示已存在并跳过重复下载。
+- 新版包会生成 `.header` 快速索引，安装模式读取离线包时会明显更快。
+
+## 6. 安装模式怎么用
+
+安装模式用于在离线环境中安装工具。
+
+操作步骤：
+
+1. 将离线包复制到项目的 `output/` 目录。
+2. 在离线机器执行：
+
+```bash
+cd /root/offline_tool_release_v1
+./offline_tools_v1.sh
+```
+
+3. 进入主菜单，选择 `安装模式`。
+4. 工具会识别当前 OS、架构、包类型。
+5. 工具会列出兼容的离线包。
+6. 选择离线包。
+7. 选择 `安装全部工具` 或 `选择性安装`。
+8. 安装前会展示已安装、待安装、可升级数量。
+9. 确认后开始安装。
+10. 安装完成后可选择继续安装其他工具包或返回主菜单。
+
+安装原则：
+
+- 安装只使用离线包内的本地仓库。
+- 不会隐式访问外部网络。
+- 已安装工具会提示，可选择跳过或升级。
+- 如果离线包中没有可安装软件包，安装会失败，不会误报成功。
+
+## 7. 离线包里有什么
+
+一个标准离线包包含：
+
+- `manifest.json`：目标 OS、架构、包类型、工具列表、包数量等元数据。
+- `packages_<OS>_<ARCH>/`：RPM 或 DEB 文件。
+- `repodata/` 或 DEB 本地仓库索引。
+- `.selected_tools`：工具级清单。
+- `.tool_pkg_map`：工具到依赖包的映射，用于排障。
 - `.sha256`：校验文件。
+- `.header`：包外快速索引文件，用于快速展示离线包信息。
 
-界面展示离线包内容时，只展示支持安装的工具名称，不展示每个依赖包。
+界面展示离线包内容时，只展示支持安装的工具名称，不展开所有依赖包。
+
+## 8. 如何检查离线包是否完整
+
+在离线包目录执行：
+
+```bash
+cd output
+sha256sum -c offline_openEuler22.03_x86_64_merged.tar.xz.sha256
+```
+
+结果显示 `成功` 表示文件未损坏。
+
+查看快速索引：
+
+```bash
+cat offline_openEuler22.03_x86_64_merged.tar.xz.header
+```
+
+可以看到：
+
+```text
+TARGET_OS="openEuler22.03"
+TARGET_ARCH="x86_64"
+PKG_TYPE="rpm"
+TOOLS="kernel-dev,gcc-make"
+PACKAGE_COUNT="227"
+```
 
 ## 9. 源检查
 
-正式发布前必须执行源检查：
+发布前建议检查所有配置源：
 
 ```bash
-./utils/check_sources.sh
+bash utils/check_sources.sh
 ```
 
-检查规则：
+检查结果会写入：
 
-- RPM 源检查 `repodata/repomd.xml`。
-- DEB 源检查 `dists/<release>/InRelease` 或 `Release`。
-- 检查结果写入 `logs/source_check_*.tsv`。
-- 任意活动源失败时，脚本以非零状态退出。
-
-质量门禁中可启用源检查：
-
-```bash
-OFFLINE_TOOLS_CHECK_SOURCES=1 ./utils/quality_gate.sh
+```text
+logs/source_check_YYYYMMDD_HHMMSS.tsv
 ```
 
-## 10. 质量门禁
-
-本地发布前执行：
+质量门禁中启用源检查：
 
 ```bash
-./utils/quality_gate.sh
+OFFLINE_TOOLS_CHECK_SOURCES=1 bash utils/quality_gate.sh
+```
+
+## 10. 质量检查
+
+每次发布前执行：
+
+```bash
+bash utils/quality_gate.sh
 ```
 
 检查内容：
 
-- 所有 shell 文件 `bash -n`。
+- Bash 语法检查。
 - `.sh` 文件禁止 CRLF。
-- 可用时执行 `shellcheck`。
-- 可用时执行 `shfmt -d`。
 - 主脚本版本 smoke test。
+- 如果安装了 `shellcheck`，自动执行 shell 静态检查。
+- 如果安装了 `shfmt`，自动执行格式检查。
 
-## 11. 同步测试机
+## 11. Windows 环境怎么使用
 
-默认测试拓扑：
+Windows 上建议把项目包上传到 Linux 主机执行，不建议直接用 PowerShell 运行 Bash 主脚本。
 
-- `172.18.10.61`：RPM 联网环境。
-- `172.18.10.62`：DEB 联网环境。
-- `172.18.10.64`：RPM 离线环境。
-- `172.18.10.65`：DEB 离线环境。
-
-同步命令：
-
-```bash
-./utils/sync_to_test_hosts.sh /mnt/c/Users/wei.qiao/Hkzy@8000 /root/offline_tool_release_v1
-```
-
-自动回归：
-
-```bash
-./utils/run_autonomous_validation.sh
-```
-
-测试日志保存在项目的 `logs/` 目录和远端项目目录下的 `logs/` 目录。
-
-## 12. Windows 使用说明
-
-Windows 环境建议通过 WSL 执行 Bash 脚本。正式 Windows 分发包应至少包含：
-
-- 主脚本和全部 `conf/`、`lib/`、`utils/` 文件。
-- 使用说明书 PDF。
-- Windows 入口说明。
-
-Windows 打包脚本：
+生成 Windows 分发包：
 
 ```powershell
-.\utils\package_windows_release.ps1 -Version v1
+powershell -ExecutionPolicy Bypass -File .\utils\package_windows_release.ps1 -Version v1.0
 ```
 
-## 13. 常见问题
+生成后文件位于：
 
-### 菜单没有显示，只出现选择提示
+```text
+output/offline_tool_v1.0_windows.zip
+```
 
-这是发布阻塞问题。需要检查 `logs/` 中是否有 `dep_check/menu_render` 或菜单渲染相关日志，并运行：
+使用方式：
+
+1. 在 Windows 解压 zip。
+2. 将解压后的目录上传到联网 Linux 下载机。
+3. 在 Linux 上执行 `bash offline_tools_v1.sh`。
+4. 生成离线包后，再复制到离线 Linux 安装机。
+
+## 12. 常见问题
+
+### 菜单没有展示完整，只看到输入提示怎么办
+
+这是交互界面问题。请保存 `logs/` 目录中的日志，并运行：
 
 ```bash
-./utils/run_menu_regression.sh
+bash utils/run_menu_regression.sh
 ```
 
-### 某个工具下载失败但仍然打包成功
+### 为什么选的工具没有下载
 
-这是发布阻塞问题。失败工具不能计入最终支持安装工具列表，也不能让整包展示为全部成功。
+常见原因：
 
-### 包组名在真实环境中可安装，但脚本提示不支持
+- 该工具已经存在于匹配 OS/架构的离线包中，已自动跳过。
+- 当前 OS 仓库没有该包组。
+- 当前架构不支持该包。
+- 源不可达或依赖解析失败。
 
-先确认目标 OS、架构和源是否选择正确，再检查：
+查看日志：
 
-- `conf/tools.conf`
-- `conf/tool_os_rules.conf`
-- `logs/source_check_*.tsv`
-- 下载日志中的失败分类码
+```bash
+tail -n 200 logs/logs_$(date +%Y%m%d).log
+```
+
+### 为什么 htop 提示不可用
+
+如果目标 OS 官方仓库没有 `htop`，工具会提示包名或包组不存在。需要换用同仓库存在的工具，或在 `conf/tool_os_rules.conf` 中配置适配规则。
 
 ### 安装时提示 packages 目录为空
 
-离线包无有效产物，安装必须失败。需要回看下载阶段日志、manifest 和本地仓库索引生成日志。
+说明离线包不完整或不是本工具生成的标准包。安装必须失败，不能继续。请重新下载和打包。
 
-## 14. 发布前检查清单
+### 为什么安装时会升级本机已有包
 
-1. `offline_tools_v1.sh --version` 输出 V1。
-2. `utils/check_sources.sh` 返回 `failed=0`。
-3. `utils/quality_gate.sh` 通过。
-4. 菜单回归通过。
-5. 中文和英文菜单均无乱码。
-6. 远端四台测试机同步成功。
-7. 远端联网/离线回归日志无发布阻塞错误。
+如果离线包内依赖版本高于本机已安装版本，包管理器会按本地仓库事务进行升级。安装前界面会展示可升级数量。
+
+## 13. 推荐发布检查清单
+
+发布前按顺序检查：
+
+1. `bash utils/quality_gate.sh` 通过。
+2. `bash utils/check_sources.sh` 显示 `failed=0`。
+3. 下载模式可以生成目标离线包。
+4. `sha256sum -c` 校验通过。
+5. 安装模式只展示兼容离线包。
+6. 选择性安装能显示工具级清单。
+7. 已安装工具能提示跳过或升级。
+8. 中英文菜单均无乱码。
+9. 10.61 最新目录已同步：`/root/offline_tool_release_v1`。
+10. GitHub 已推送最新提交。
+
+## 14. 现场人员最短操作流程
+
+联网下载机：
+
+```bash
+cd /root/offline_tool_release_v1
+./offline_tools_v1.sh
+# 选择：下载模式 -> 目标 OS -> 架构 -> 工具 -> 确认下载
+```
+
+复制离线包：
+
+```bash
+scp output/offline_<OS>_<ARCH>_merged.tar.xz* root@离线机器:/root/offline_tool_release_v1/output/
+```
+
+离线安装机：
+
+```bash
+cd /root/offline_tool_release_v1
+./offline_tools_v1.sh
+# 选择：安装模式 -> 兼容离线包 -> 安装全部或选择性安装
+```

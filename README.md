@@ -24,3 +24,15 @@ Key directories:
 - `utils/` validation and sync helpers
 - `docs/` project memory, decisions, and test findings
 - `skills/` project-local Codex skills
+
+User documents:
+
+- `docs/offline_tools_user_manual_zh_CN.md` detailed Chinese user manual
+- `docs/offline_tools_user_manual_zh_CN.pdf` printable detailed manual
+- `docs/offline_tools_a4_quick_guide_zh_CN.pdf` one-page A4 quick guide
+
+Build Windows distribution package:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\utils\package_windows_release.ps1 -Version v1.0
+```
