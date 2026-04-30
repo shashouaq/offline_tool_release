@@ -117,10 +117,10 @@ def main():
     text(c, "联网下载完整依赖，离线环境只用本地仓库安装", 38, page_h - 68, 12, font, colors.HexColor("#c9e8ff"))
 
     steps = [
-        ("准备联网机器", "进入项目目录，确认联网机器能访问目标 OS 软件源。", "network", colors.HexColor("#1b7f8c")),
-        ("下载并打包", "选择下载模式、目标 OS、架构和工具包组，等待生成 output/offline_*.tar.xz。", "download", colors.HexColor("#2563eb")),
-        ("复制离线包", "把 .tar.xz、.sha256、.header 一起复制到离线机器的 output 目录。", "box", colors.HexColor("#7c3aed")),
-        ("离线安装", "选择安装模式，选兼容离线包，可安装全部或选择性安装。", "install", colors.HexColor("#16a34a")),
+        ("下载项目", "在全新环境解压发布包，进入项目目录，运行 bash offline_tools_v1.sh", "network", colors.HexColor("#1b7f8c")),
+        ("联网打包", "选择下载模式，选目标 OS、架构和工具，生成 output/offline_*.tar.xz", "download", colors.HexColor("#2563eb")),
+        ("复制三件套", "把离线包、校验文件、快速索引一起复制到离线服务器的 output 目录", "box", colors.HexColor("#7c3aed")),
+        ("离线安装", "选择安装模式，选兼容离线包，可安装全部或选择性安装", "install", colors.HexColor("#16a34a")),
     ]
 
     x1, x2 = 36, page_w / 2 + 10
@@ -135,9 +135,9 @@ def main():
     text(c, "常用命令", 54, 268, 15, font, colors.HexColor("#0f3a5f"))
     commands = [
         "启动：bash offline_tools_v1.sh",
-        "质量检查：bash utils/quality_gate.sh",
         "源检查：bash utils/check_sources.sh",
-        "校验离线包：cd output && sha256sum -c offline_*.sha256",
+        "校验：cd output && sha256sum -c offline_*.sha256",
+        "工作区不足：export OFFLINE_TOOLS_WORK_DIR=/var/tmp/offline_tools_v1",
     ]
     y = 246
     for cmd in commands:
@@ -151,7 +151,7 @@ def main():
     text(c, "现场确认", 122, 120, 14, font, colors.HexColor("#9a3412"))
     wrapped(
         c,
-        "1. OS 和架构必须匹配。2. 安装模式只使用离线包本地仓库。3. 界面只展示工具名，不展开依赖包。4. 遇到问题优先打包 logs 目录。",
+        "1. OS 和架构必须匹配。2. 安装模式只使用离线包本地仓库。3. 复制离线包时带上校验文件和快速索引。4. 遇到问题优先查看 logs 目录。",
         122,
         100,
         page_w - 170,
@@ -161,7 +161,7 @@ def main():
         colors.HexColor("#7c2d12"),
     )
 
-    centered(c, "最新版测试路径：172.18.10.61:/root/offline_tool_release_v1", 36, 32, page_w - 72, 9.5, font, colors.HexColor("#64748b"))
+    centered(c, "发布包不包含 logs、output 和离线包；运行时会自动创建。", 36, 32, page_w - 72, 9.5, font, colors.HexColor("#64748b"))
     c.save()
     print(OUTPUT)
 

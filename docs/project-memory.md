@@ -77,6 +77,27 @@ Success means:
 3. Progress bars should reflect current action, current tool/group, and source when relevant.
 4. Selection and install pages should show tool/group names, not dependency explosions.
 
+## Release Package Rules
+
+1. Release packages must be clean bootstrap packages for a fresh environment.
+2. Release packages must include only files needed to run, configure, validate, and understand the tool:
+   - `offline_tools_v1.sh`
+   - `README.md`
+   - `conf/`
+   - `lib/`
+   - selected runtime utilities under `utils/`
+   - user-facing manuals under `docs/`
+3. Release packages must not include generated or environment-specific artifacts:
+   - `logs/`
+   - `output/`
+   - offline bundles such as `offline_*.tar.xz`
+   - checksums or quick headers generated for offline bundles
+   - remote regression logs
+   - temporary archives such as `.zip`, `.rar`, `.tmp`, `.bak`
+4. User manuals must describe how to use the project after downloading it into a fresh environment.
+5. User manuals must not contain private test machine paths, test host IPs, or development-only instructions.
+6. If runtime creates `logs/` or `output/`, those directories are created on demand and remain untracked.
+
 ## Testing Rules
 
 1. Prefer autonomous remote validation over manual user repetition.

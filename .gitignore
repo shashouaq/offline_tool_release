@@ -1,6 +1,13 @@
 # Runtime artifacts
 logs/
 output/
+*.zip
+*.rar
+*.tar
+*.tar.gz
+*.tar.xz
+*.sha256
+*.header
 
 # Temporary files
 *.log
